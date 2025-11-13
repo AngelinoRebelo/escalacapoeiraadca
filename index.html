@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escala de Portaria e Serviços - ADCA</title>
+    <!-- Carrega Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configuração da Fonte Inter (padrão) -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* bg-gray-100 */
+        }
+        /* Estilo para a célula enquanto exibe o texto (antes do clique) */
+        .editable-cell {
+            cursor: pointer;
+            transition: background-color 0.1s;
+        }
+        .editable-cell:hover {
+            background-color: #eff6ff; /* bg-blue-50 */
+        }
+        /* Estilo para as células no modo admin (visivelmente editáveis) */
+        .admin-mode-active .editable-cell {
+            outline: 3px dashed #3b82f6; /* Borda tracejada azul */
+            outline-offset: -3px;
+        }
+        
+        /* Estilos para a separação dos blocos semanais */
+        .week-header-row td {
+            padding-top: 0.75rem; /* pt-3 */
+            padding-bottom: 0.75rem; /* pb-3 */
+            /* Adiciona uma linha de separação mais espessa */
+            border-bottom: 4px solid #f3f4f6; 
+            border-top: 4px solid #f3f4f6; 
+        }
+        .week-header {
+            font-size: 1rem; 
+            background-color: #1c4a9a !important; /* Blue-800 mais escuro para destaque */
+            color: white;
+            font-weight: 800; /* Extra bold */
+            text-align: center;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+        /* Definição de cores para as linhas dos cultos */
+        /* Cor Padrão (Semana Ímpar) */
+        .week-odd {
+            background-color: #d1d5db; /* gray-300 - mais escuro para contraste */
+        }
+        /* Cor Alternada (Semana Par) */
+        .week-even {
+            background-color: #e5e7eb; /* gray-200 - mais claro */
+        }
+        /* Estilo para a linha atual */
+        .today-row {
+            background-color: #fcd34d !important; /* amber-300 */
+            font-weight: 600;
+        }
+
+        /* Estilo para o campo de input temporário */
+        .input-editor {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #3b82f6;
+            border-radius: 0.25rem;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <!-- Cabeçalho Principal e Seleção de Mês/Ano -->
+    <header class="mb-6 flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-lg shadow-md">
+        <h1 class="text-3xl font-bold text-gray-800 mb-4 md:mb-0">ESCALA DE CULTOS</h1>
+        
+        <div class="flex items-center space-x-4">
+            <select id="monthSelector" class="p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"></select>
+            <select id="yearSelector" class="p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"></select>
+            <button id="adminButton" class="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition duration-150">
+                Modo Admin
+            </button>
+        </div>
+    </header>
+
+    <!-- Indicador de Status/Loading -->
+    <div id="statusMessage" class="text-center p-4 mb-6 text-lg font-medium rounded-lg shadow-md bg-white border border-yellow-300 text-yellow-800">
+        Carregando dados e autenticando...
+    </div>
+
+    <!-- Tabela da Escala Principal -->
+    <div id="scheduleContainer" class="overflow-x-auto bg-white p-4 rounded-lg shadow-lg">
+        <table id="scheduleTable" class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-blue-600 text-white">
+                <tr>
+                    <th class="px-3 py-2 text-left text-sm font-semibold uppercase tracking-wider w-1/12">Data</th>
+                    <th class="px-3 py-2 text-left text-sm font-semibold uppercase tracking-wider w-1/12">Dia</th>
+                    <th class="px-3 py-2 text-left text-sm font-semibold uppercase tracking-wider w-2/12">Culto</th>
+                    <th class="px-3 py-2 text-left text-sm font-semibold uppercase tracking-wider w-2/12">Portaria</th>
+                    <th class="px-3 py-2 text-left text-sm font-semibold uppercase tracking-wider w-2/12">Direção</th>
+                    <th class="px-3 py-2 text-left text-sm font-semibold uppercase tracking-wider w-2/12">Preletor</th>
+                    <th id="adminActionHeader" class="px-3 py-2 text-center text-sm font-semibold uppercase tracking-wider w-1/12 hidden">Ação</th>
+                </tr>
+            </thead>
+            <tbody id="scheduleBody" class="bg-white divide-y divide-gray-200">
+                <!-- Conteúdo da escala será inserido aqui pelo JavaScript -->
+            </tbody>
+        </table>
+        <div id="noDataMessage" class="text-center p-8 text-gray-500 hidden">
+            Nenhuma escala encontrada para este mês. Alterne para o Modo Admin para criar uma!
+        </div>
+    </div>
+
+    <!-- Modal de Administração (escondido por padrão) -->
+    <div id="adminModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center hidden">
+        <div class="bg-white p-6 md:p-8 rounded-xl shadow-2xl w-full max-w-2xl transform transition-all">
+            <h2 class="text-2xl font-bold mb-4 text-gray-800 border-b pb-2">Gerenciamento Administrativo</h2>
+            
+            <!-- Aba de Gerenciamento de Membros -->
+            <div class="mb-6">
+                <h3 class="text-xl font-semibold mb-3 text-indigo-600">1. Lista de Membros</h3>
+                <div class="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2 mb-3">
+                    <input type="text" id="newMemberName" placeholder="Novo nome de membro" class="flex-grow p-2 border rounded-lg">
+                    <button id="addMemberButton" class="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition">Adicionar Membro</button>
+                </div>
+                <div id="membersList" class="max-h-40 overflow-y-auto border p-3 rounded-lg bg-gray-50">
+                    <!-- Membros serão listados aqui -->
+                </div>
+            </div>
+
+            <!-- Aba de Gerenciamento de Cultos da Escala -->
+            <div class="mb-6 border-t pt-4">
+                <h3 class="text-xl font-semibold mb-3 text-indigo-600">2. Gerenciar Cultos (Escala de <span id="currentMonthYear"></span>)</h3>
+                
+                <p class="text-sm text-gray-600 mb-2">Adicionar um novo culto requer preencher todos os campos (Data, Dia, Culto).</p>
+
+                <!-- Formulário para Adicionar Culto (Linha) -->
+                <div class="p-3 border rounded-lg mb-4 bg-yellow-50">
+                    <h4 class="font-bold mb-2">Adicionar Novo Culto</h4>
+                    <div class="grid grid-cols-2 gap-3">
+                        <input type="date" id="newCultoDate" class="p-2 border rounded-lg col-span-2 md:col-span-1" required>
+                        <select id="newCultoDay" class="p-2 border rounded-lg col-span-2 md:col-span-1" required>
+                            <option value="" disabled selected>Dia da Semana</option>
+                            <option value="DOMINGO">Domingo</option>
+                            <option value="QUARTA-FEIRA">Quarta-Feira</option>
+                            <option value="SEXTA-FEIRA">Sexta-Feira</option>
+                            <option value="SABADO">Sábado</option>
+                        </select>
+                        <input type="text" id="newCultoName" placeholder="Nome do Culto (Ex: Doutrina)" class="p-2 border rounded-lg col-span-2">
+                    </div>
+                    <button id="addCultoButton" class="mt-3 w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition">Salvar Culto na Escala</button>
+                </div>
+                
+                <h4 class="font-bold mb-2">Remover Cultos Existentes</h4>
+                <p class="text-sm text-gray-600 mb-2">Use o botão de "Ação" na tabela principal no Modo Admin para remover cultos individualmente.</p>
+            </div>
+
+            <!-- Botão de Fechar Modal -->
+            <div class="flex justify-end pt-4 border-t">
+                <button id="closeAdminModal" class="px-6 py-2 bg-gray-500 text-white rounded-lg font-semibold hover:bg-gray-600 transition">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Senha Admin (para ativar a edição) -->
+    <div id="passwordModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md transform transition-all">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">Ativar Modo Admin</h2>
+            <p class="mb-4 text-sm text-gray-600">Para liberar a edição da escala e a gestão de membros, insira a senha de administrador.</p>
+            <input type="password" id="adminPasswordInput" placeholder="Senha" class="w-full p-3 border rounded-lg mb-4">
+            <div id="passwordError" class="text-red-500 text-sm mb-4 hidden">Senha incorreta.</div>
+            <div class="flex justify-end space-x-3">
+                <button id="cancelPassword" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition">Cancelar</button>
+                <button id="submitPassword" class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase e Lógica JavaScript -->
+    <script type="module">
+        // Importação corrigida: setLogLevel é importado de firebase-app
+        import { initializeApp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, getDoc, updateDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Variáveis globais (fornecidas pelo ambiente Canvas)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'escala-adca-capoeira';
+        // Usando a chave fornecida pelo usuário como fallback, mas priorizando a variável global
+        const firebaseConfigString = typeof __firebase_config !== 'undefined' ? __firebase_config : '{"apiKey": "AIzaSyAIVZC5Q8lfcMPCiv1oQzFm1oCajNB76c8", "authDomain": "escala-adca-capoeira.firebaseapp.com", "projectId": "escala-adca-capoeira", "storageBucket": "escala-adca-capoeira.firebasestorage.app", "messagingSenderId": "1015575781500", "appId": "1:1015575781500:web:1c483c568b98dfd5cd29f9"}';
+        const firebaseConfig = JSON.parse(firebaseConfigString);
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Inicialização do Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // Ativar log de debug do Firestore
+        setLogLevel('debug');
+
+        // Variáveis de estado
+        let isAuthReady = false;
+        let userId = null;
+        let isAdmin = false;
+        let adminPassword = null; // Senha carregada do Firestore
+        let currentMonth = new Date().getMonth() + 1;
+        let currentYear = new Date().getFullYear();
+        let currentSchedule = [];
+        let membersList = [];
+
+        // Elementos DOM
+        const statusMessageEl = document.getElementById('statusMessage');
+        const scheduleBody = document.getElementById('scheduleBody');
+        const adminButton = document.getElementById('adminButton');
+        const adminActionHeader = document.getElementById('adminActionHeader');
+        const adminModal = document.getElementById('adminModal');
+        const passwordModal = document.getElementById('passwordModal');
+        const monthSelector = document.getElementById('monthSelector');
+        const yearSelector = document.getElementById('yearSelector');
+        const noDataMessage = document.getElementById('noDataMessage');
+        const scheduleContainer = document.getElementById('scheduleContainer'); // Para ativar a classe admin-mode-active
+
+        // --- FUNÇÕES DE UTENSILIDADE ---
+
+        /**
+         * Retorna o caminho do documento da escala para o mês/ano atual.
+         * Caminho: /artifacts/{appId}/public/data/escalas/{MM-YYYY}
+         */
+        const getScheduleDocPath = (month, year) => {
+            const monthStr = String(month).padStart(2, '0');
+            return doc(db, 'artifacts', appId, 'public', 'data', 'escalas', `${monthStr}-${year}`);
+        };
+
+        /**
+         * Retorna o caminho do documento da lista de membros.
+         * Caminho: /artifacts/{appId}/public/data/membros/membros_list
+         */
+        const getMembersDocPath = () => {
+            return doc(db, 'artifacts', appId, 'public', 'data', 'membros', 'membros_list');
+        };
+
+        /**
+         * Retorna o caminho do documento de configuração Admin.
+         * Caminho: /artifacts/{appId}/public/data/config/admin
+         */
+        const getAdminConfigDocPath = () => {
+            return doc(db, 'artifacts', appId, 'public', 'data', 'config', 'admin');
+        };
+
+        /**
+         * Ordena a escala: Primeiro por Semana (1-5), depois por Dia (DOMINGO > QUARTA > SEXTA).
+         */
+        const sortSchedule = (schedule) => {
+            // Definindo a ordem de prioridade dos dias como solicitado: Domingo, Quarta, Sexta.
+            const dayOrder = { 'DOMINGO': 1, 'QUARTA-FEIRA': 2, 'SEXTA-FEIRA': 3, 'SÁBADO': 4 };
+            
+            return schedule.sort((a, b) => {
+                // 1. Ordena por Semana (semana 1 vem antes da semana 2)
+                if (a.semana !== b.semana) {
+                    return a.semana - b.semana;
+                }
+                // 2. Dentro da mesma semana, ordena pelo Dia (Domingo < Quarta < Sexta)
+                return (dayOrder[a.dia] || 99) - (dayOrder[b.dia] || 99);
+            });
+        };
+
+        /**
+         * Encontra a semana do mês a que pertence uma data.
+         */
+        const getWeekOfMonth = (dateString, month, year) => {
+            const [day] = dateString.split('/').map(Number);
+            // Simples: calcula a semana baseada no dia do mês
+            // Considera o primeiro dia do mês como o início da primeira semana
+            return Math.ceil(day / 7);
+        };
+
+        /**
+         * Gera a grade inicial de cultos para o mês.
+         * Cultos fixos: Quarta-Feira (Doutrina), Sexta-Feira (Libertação), Domingo (Louvor e Adoração).
+         */
+        const generateInitialSchedule = (month, year) => {
+            const initialSchedule = [];
+            const date = new Date(year, month - 1, 1);
+            const lastDay = new Date(year, month, 0).getDate();
+            
+            for (let day = 1; day <= lastDay; day++) {
+                date.setDate(day);
+                const dayOfWeek = date.getDay(); // 0=Dom, 1=Seg...
+
+                let cultoDay = null;
+                let cultoName = null;
+                
+                // Mapeamento dos dias: 0=Dom, 3=Qua, 5=Sex
+                if (dayOfWeek === 0) { // Domingo
+                    cultoDay = 'DOMINGO';
+                    cultoName = 'LOUVOR E ADORAÇÃO';
+                } else if (dayOfWeek === 3) { // Quarta-feira
+                    cultoDay = 'QUARTA-FEIRA';
+                    cultoName = 'DOUTRINA';
+                } else if (dayOfWeek === 5) { // Sexta-feira
+                    cultoDay = 'SEXTA-FEIRA';
+                    cultoName = 'LIBERTAÇÃO';
+                }
+
+                if (cultoDay) {
+                    const formattedDate = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+                    
+                    // Recalcula a semana para garantir consistência no bloco visual
+                    const weekNumber = getWeekOfMonth(formattedDate, month, year);
+
+                    initialSchedule.push({
+                        id: Date.now().toString() + '-' + day, // ID único
+                        data: formattedDate,
+                        dia: cultoDay,
+                        culto: cultoName,
+                        portaria: 'A DEFINIR',
+                        direcao: 'A DEFINIR',
+                        preletor: 'A DEFINIR',
+                        semana: weekNumber
+                    });
+                }
+            }
+            return initialSchedule;
+        };
+
+
+        // --- FUNÇÕES DE DADOS (FIRESTORE) ---
+
+        /**
+         * Inicializa a configuração Admin no Firestore se ainda não existir.
+         */
+        const initializeAdminConfig = async () => {
+            const adminConfigRef = getAdminConfigDocPath();
+            const adminConfigDoc = await getDoc(adminConfigRef);
+
+            if (!adminConfigDoc.exists()) {
+                const initialPassword = "admin123"; // Senha padrão inicial
+                await setDoc(adminConfigRef, { password: initialPassword });
+                adminPassword = initialPassword;
+                console.log("Configuração Admin inicial criada com senha padrão.");
+            } else {
+                adminPassword = adminConfigDoc.data().password;
+            }
+        };
+
+        /**
+         * Inicializa a lista de membros no Firestore se ainda não existir.
+         */
+        const initializeMembers = async () => {
+            const memberDocRef = getMembersDocPath();
+            const memberDoc = await getDoc(memberDocRef);
+
+            if (!memberDoc.exists()) {
+                const initialMembers = [
+                    "Pr. Gabriel", "Prb. Leandro", "Miss. Ana", "Miss. Kelly", "Miss. Lorrane", "Miss. Ester",
+                    "Dca. Simone", "Dca. Rosa", "Dca. Raquel", "Dca. Cristiane", "Ob. Janete", "Ob. Ana Rocha",
+                    "Ob. Marcos", "Ob. Clemiltom", "Ir. Vitória", "Ir. Natalia", "Ir. Gabriel"
+                ];
+                await setDoc(memberDocRef, { nomes: initialMembers });
+                console.log("Lista inicial de membros criada.");
+            }
+        };
+
+        /**
+         * Inicializa a escala do mês/ano atual se ainda não existir.
+         */
+        const initializeSchedule = async (month, year) => {
+            const scheduleRef = getScheduleDocPath(month, year);
+            const docSnap = await getDoc(scheduleRef);
+
+            if (!docSnap.exists() || !docSnap.data().escalas || docSnap.data().escalas.length === 0) {
+                const initialSchedule = generateInitialSchedule(month, year);
+                if (initialSchedule.length > 0) {
+                    await setDoc(scheduleRef, { escalas: initialSchedule });
+                    console.log(`Escala inicial para ${month}/${year} criada com ${initialSchedule.length} cultos.`);
+                }
+            }
+        };
+
+
+        /**
+         * Adiciona um membro à lista.
+         */
+        const addMemberToDB = async (name) => {
+            const memberDocRef = getMembersDocPath();
+            try {
+                await updateDoc(memberDocRef, {
+                    nomes: arrayUnion(name)
+                });
+                console.log(`Membro ${name} adicionado.`);
+            } catch (error) {
+                console.error("Erro ao adicionar membro:", error);
+            }
+        };
+
+        /**
+         * Remove um membro da lista.
+         */
+        const removeMemberFromDB = async (name) => {
+            const memberDocRef = getMembersDocPath();
+            try {
+                await updateDoc(memberDocRef, {
+                    nomes: arrayRemove(name)
+                });
+                console.log(`Membro ${name} removido.`);
+            } catch (error) {
+                console.error("Erro ao remover membro:", error);
+            }
+        };
+
+        /**
+         * Atualiza uma célula específica na escala.
+         */
+        const updateScheduleCell = async (scheduleId, field, value) => {
+            if (!isAdmin) return;
+            try {
+                const scheduleRef = getScheduleDocPath(currentMonth, currentYear);
+                const docSnap = await getDoc(scheduleRef);
+                if (!docSnap.exists()) return;
+
+                const newSchedule = docSnap.data().escalas.map(culto => {
+                    if (culto.id === scheduleId) {
+                        return { ...culto, [field]: value };
+                    }
+                    return culto;
+                });
+
+                await setDoc(scheduleRef, { escalas: newSchedule });
+                // O listener de onSnapshot irá redesenhar a tela
+            } catch (error) {
+                console.error("Erro ao atualizar célula da escala:", error);
+            }
+        };
+
+        /**
+         * Adiciona um novo culto (linha) à escala.
+         */
+        const addCultoToSchedule = async (dateStr, day, name) => {
+            const scheduleRef = getScheduleDocPath(currentMonth, currentYear);
+            
+            // Formatando a data de 'YYYY-MM-DD' para 'DD/MM/YYYY'
+            const [year, month] = dateStr.split('-');
+            const [ , , dayOfMonth] = dateStr.split('-');
+            const formattedDate = `${dayOfMonth}/${month}/${year}`;
+            
+            const newCulto = {
+                id: Date.now().toString(),
+                data: formattedDate,
+                dia: day,
+                culto: name,
+                portaria: 'A DEFINIR',
+                direcao: 'A DEFINIR',
+                preletor: 'A DEFINIR',
+                semana: getWeekOfMonth(formattedDate, Number(month), Number(year))
+            };
+
+            try {
+                const docSnap = await getDoc(scheduleRef);
+                let currentEscalas = [];
+                if (docSnap.exists() && Array.isArray(docSnap.data().escalas)) {
+                    currentEscalas = docSnap.data().escalas;
+                }
+                
+                // Usar setDoc com merge para garantir que a collection é criada se não existir
+                await setDoc(scheduleRef, { escalas: [...currentEscalas, newCulto] }, { merge: true });
+                console.log(`Novo culto (${name} em ${formattedDate}) adicionado.`);
+            } catch (error) {
+                console.error("Erro ao adicionar novo culto:", error);
+            }
+        };
+
+        /**
+         * Remove um culto (linha) da escala.
+         */
+        const removeCultoFromSchedule = async (scheduleId) => {
+            // Usando modal customizado para confirmação
+            if (!window.confirm("Tem certeza que deseja remover este culto da escala?")) return;
+
+            const scheduleRef = getScheduleDocPath(currentMonth, currentYear);
+            try {
+                const docSnap = await getDoc(scheduleRef);
+                if (!docSnap.exists()) return;
+
+                const currentEscalas = docSnap.data().escalas;
+                const newSchedule = currentEscalas.filter(culto => culto.id !== scheduleId);
+
+                await setDoc(scheduleRef, { escalas: newSchedule });
+                // O listener de onSnapshot irá redesenhar a tela
+            } catch (error) {
+                console.error("Erro ao remover culto:", error);
+            }
+        };
+
+        // --- FUNÇÕES DE VISUALIZAÇÃO (DOM) ---
+
+        /**
+         * Renderiza a lista de membros no modal.
+         */
+        const renderMembersList = () => {
+            const listEl = document.getElementById('membersList');
+            listEl.innerHTML = '';
+            membersList.forEach(member => {
+                const div = document.createElement('div');
+                div.className = 'flex justify-between items-center p-2 border-b last:border-b-0';
+                div.innerHTML = `
+                    <span class="text-gray-700">${member}</span>
+                    <button data-member="${member}" class="remove-member-btn text-red-500 hover:text-red-700 transition">Remover</button>
+                `;
+                listEl.appendChild(div);
+            });
+
+            // Adiciona listener de remoção
+            listEl.querySelectorAll('.remove-member-btn').forEach(button => {
+                button.onclick = () => {
+                    // Usando modal customizado para confirmação
+                    if (window.confirm(`Tem certeza que deseja remover o membro "${button.dataset.member}"?`)) {
+                        removeMemberFromDB(button.dataset.member);
+                    }
+                };
+            });
+        };
+
+        /**
+         * Cria um elemento de célula editável para a tabela.
+         */
+        const createEditableCell = (culto, field, value, weekNumber) => {
+            const td = document.createElement('td');
+            td.className = `px-3 py-2 text-sm text-gray-900 editable-cell`;
+            td.textContent = value;
+            td.dataset.id = culto.id;
+            td.dataset.field = field;
+            td.dataset.weekClass = weekNumber % 2 === 1 ? 'week-odd' : 'week-even';
+
+            // Adiciona o listener de clique para iniciar a edição (se for admin)
+            if (isAdmin) {
+                td.onclick = (e) => {
+                    if (e.target.tagName !== 'TD') return;
+                    startEditing(e.target, culto.id, field);
+                };
+            }
+
+            return td.outerHTML;
+        };
+
+        /**
+         * Inicia o modo de edição em uma célula.
+         */
+        const startEditing = (cell, id, field) => {
+            // Se já estiver editando, não faz nada
+            if (cell.querySelector('input')) return;
+
+            const currentValue = cell.textContent.trim();
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = currentValue;
+            input.className = 'input-editor';
+            input.setAttribute('list', 'members-datalist');
+            
+            // Substitui o conteúdo da célula pelo input
+            cell.textContent = '';
+            cell.appendChild(input);
+            input.focus();
+
+            // Lógica para salvar ao perder o foco (blur) ou pressionar Enter
+            const saveAndEndEditing = () => {
+                const newValue = input.value.trim();
+                cell.textContent = newValue;
+                updateScheduleCell(id, field, newValue);
+                cell.onclick = (e) => startEditing(e.target, id, field); // Restaura o listener de edição
+            };
+
+            input.onblur = saveAndEndEditing;
+            input.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveAndEndEditing(); 
+                }
+            };
+
+            // Remove o listener de clique temporariamente para evitar loops
+            cell.onclick = null; 
+        };
+
+        /**
+         * Renderiza a escala no corpo da tabela, incluindo os cabeçalhos de semana.
+         */
+        const renderSchedule = () => {
+            scheduleBody.innerHTML = '';
+            adminActionHeader.classList.toggle('hidden', !isAdmin);
+            scheduleContainer.classList.toggle('admin-mode-active', isAdmin);
+            
+            if (!currentSchedule || currentSchedule.length === 0) {
+                noDataMessage.classList.remove('hidden');
+                return;
+            }
+
+            noDataMessage.classList.add('hidden');
+            const sortedSchedule = sortSchedule(currentSchedule);
+            let lastWeek = 0;
+
+            sortedSchedule.forEach(culto => {
+                const weekNumber = culto.semana || getWeekOfMonth(culto.data, currentMonth, currentYear); // Fallback
+                
+                // Verifica se é a primeira linha de uma nova semana para adicionar o cabeçalho
+                if (weekNumber !== lastWeek) {
+                    const weekHeaderRow = document.createElement('tr');
+                    weekHeaderRow.className = 'week-header-row';
+                    // Aplicando a cor de fundo da semana no cabeçalho
+                    const weekBgClass = weekNumber % 2 === 1 ? 'bg-blue-700' : 'bg-blue-800'; 
+                    weekHeaderRow.innerHTML = `<td colspan="7" class="px-3 py-2 text-sm week-header ${weekBgClass}">SEMANA ${weekNumber} DE ${monthSelector.options[monthSelector.selectedIndex].textContent.toUpperCase()}</td>`;
+                    scheduleBody.appendChild(weekHeaderRow);
+                }
+                
+                // Cria a linha do culto
+                const weekClass = weekNumber % 2 === 1 ? 'week-odd' : 'week-even'; 
+                const isToday = culto.data === new Date().toLocaleDateString('pt-BR');
+                const todayClass = isToday ? 'today-row' : '';
+
+                let rowHTML = `
+                    <tr class="${weekClass} ${todayClass} hover:bg-opacity-75 transition duration-100">
+                        <td class="px-3 py-2 text-sm text-gray-900 font-medium">${culto.data}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900">${culto.dia}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900">${culto.culto}</td>
+                        ${createEditableCell(culto, 'portaria', culto.portaria, weekNumber)}
+                        ${createEditableCell(culto, 'direcao', culto.direcao, weekNumber)}
+                        ${createEditableCell(culto, 'preletor', culto.preletor, weekNumber)}
+                        <td class="px-3 py-2 text-center hidden ${isAdmin ? '!table-cell' : ''}">
+                            <button class="remove-culto-btn text-red-500 hover:text-red-700 transition" data-id="${culto.id}" title="Remover Culto">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mx-auto" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 10-2 0v6a1 1 0 102 0V8z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+
+                scheduleBody.insertAdjacentHTML('beforeend', rowHTML);
+                lastWeek = weekNumber;
+            });
+
+            // Adiciona listeners para remoção (apenas se for admin)
+            if (isAdmin) {
+                scheduleBody.querySelectorAll('.remove-culto-btn').forEach(btn => {
+                    btn.onclick = () => removeCultoFromSchedule(btn.dataset.id);
+                });
+            }
+        };
+
+        /**
+         * Atualiza o status de carregamento e erro.
+         */
+        const updateStatus = (message, isError = false) => {
+            statusMessageEl.textContent = message;
+            statusMessageEl.className = `text-center p-4 mb-6 text-lg font-medium rounded-lg shadow-md ${isError ? 'bg-red-100 border border-red-300 text-red-800' : 'bg-green-100 border border-green-300 text-green-800'}`;
+        };
+
+        // --- LISTENERS FIRESTORE (REAL-TIME) ---
+
+        /**
+         * Observa mudanças na lista de membros.
+         */
+        const setupMembersListener = () => {
+            const membersRef = getMembersDocPath();
+            onSnapshot(membersRef, (docSnap) => {
+                if (docSnap.exists() && docSnap.data().nomes) {
+                    membersList = docSnap.data().nomes.filter(n => typeof n === 'string');
+                    // Cria ou atualiza o datalist para autocompletar
+                    let datalist = document.getElementById('members-datalist');
+                    if (!datalist) {
+                        datalist = document.createElement('datalist');
+                        datalist.id = 'members-datalist';
+                        document.body.appendChild(datalist);
+                    }
+                    datalist.innerHTML = membersList.map(member => `<option value="${member}">`).join('');
+                } else {
+                    membersList = [];
+                }
+                if (isAdmin) renderMembersList();
+            }, (error) => {
+                console.error("Erro ao carregar lista de membros:", error);
+            });
+        };
+
+        /**
+         * Observa mudanças na escala do mês/ano selecionado.
+         */
+        const setupScheduleListener = (month, year) => {
+            const scheduleRef = getScheduleDocPath(month, year);
+            
+            // 1. Antes de iniciar o listener, garanta que a escala inicial seja criada
+            initializeSchedule(month, year)
+                .then(() => {
+                    // 2. Inicia o listener em tempo real após garantir a inicialização
+                    onSnapshot(scheduleRef, (docSnap) => {
+                        if (docSnap.exists() && docSnap.data().escalas) {
+                            currentSchedule = docSnap.data().escalas;
+                        } else {
+                            currentSchedule = [];
+                        }
+                        renderSchedule();
+                        const selectedMonthText = monthSelector.options[monthSelector.selectedIndex].textContent;
+                        document.getElementById('currentMonthYear').textContent = `${selectedMonthText}/${year}`;
+                        updateStatus(`Escala de ${selectedMonthText}/${year} carregada. Usuário logado: ${userId}`, false);
+
+                    }, (error) => {
+                        console.error("Erro ao carregar escala:", error);
+                        currentSchedule = [];
+                        renderSchedule();
+                        updateStatus(`Erro ao carregar escala de ${month}/${year}.`, true);
+                    });
+                })
+                .catch(error => {
+                    console.error("Erro ao inicializar a escala:", error);
+                    updateStatus(`Erro fatal ao inicializar a escala para ${month}/${year}.`, true);
+                });
+        };
+
+        // --- INICIALIZAÇÃO E EVENTOS ---
+
+        /**
+         * Configura os seletores de Mês e Ano.
+         */
+        const setupSelectors = () => {
+            const months = [
+                'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+            ];
+            
+            // Mês
+            months.forEach((monthName, index) => {
+                const option = document.createElement('option');
+                option.value = index + 1;
+                option.textContent = monthName;
+                monthSelector.appendChild(option);
+            });
+            monthSelector.value = currentMonth;
+
+            // Ano
+            const currentYearValue = new Date().getFullYear();
+            for (let i = currentYearValue - 1; i <= currentYearValue + 5; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = i;
+                yearSelector.appendChild(option);
+            }
+            yearSelector.value = currentYear;
+
+            // Listener de mudança
+            monthSelector.onchange = (e) => {
+                currentMonth = Number(e.target.value);
+                setupScheduleListener(currentMonth, currentYear);
+            };
+            yearSelector.onchange = (e) => {
+                currentYear = Number(e.target.value);
+                setupScheduleListener(currentMonth, currentYear);
+            };
+        };
+
+        /**
+         * Inicializa os event listeners do modal de administração.
+         */
+        const setupAdminModalListeners = () => {
+            document.getElementById('closeAdminModal').onclick = () => adminModal.classList.add('hidden');
+            document.getElementById('addMemberButton').onclick = () => {
+                const input = document.getElementById('newMemberName');
+                const name = input.value.trim();
+                if (name) {
+                    addMemberToDB(name);
+                    input.value = '';
+                }
+            };
+            document.getElementById('addCultoButton').onclick = async () => {
+                const dateInput = document.getElementById('newCultoDate');
+                const dayInput = document.getElementById('newCultoDay');
+                const nameInput = document.getElementById('newCultoName');
+                
+                if (dateInput.value && dayInput.value && nameInput.value) {
+                    await addCultoToSchedule(dateInput.value, dayInput.value, nameInput.value);
+                    // Limpar formulário
+                    dateInput.value = '';
+                    dayInput.value = '';
+                    nameInput.value = '';
+                } else {
+                    // Feedback de erro no modal Admin
+                    console.error('Por favor, preencha a Data, o Dia e o Nome do Culto.');
+                }
+            };
+        };
+
+        /**
+         * Lógica de Login/Admin
+         */
+        const setupAdminLogic = () => {
+            adminButton.onclick = () => {
+                if (isAdmin) {
+                    // Se já for admin, abre o modal de gerenciamento
+                    adminModal.classList.remove('hidden');
+                } else {
+                    // Se não for admin, abre o modal de senha
+                    document.getElementById('adminPasswordInput').value = '';
+                    document.getElementById('passwordError').classList.add('hidden');
+                    passwordModal.classList.remove('hidden');
+                }
+            };
+
+            document.getElementById('cancelPassword').onclick = () => passwordModal.classList.add('hidden');
+            document.getElementById('submitPassword').onclick = () => {
+                const password = document.getElementById('adminPasswordInput').value;
+                const errorEl = document.getElementById('passwordError');
+
+                if (password === adminPassword) {
+                    isAdmin = true;
+                    passwordModal.classList.add('hidden');
+                    adminButton.textContent = "Gerenciar Escala";
+                    adminButton.classList.add('bg-orange-600', 'hover:bg-orange-700');
+                    adminButton.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+                    updateStatus("Modo Admin ativado! Você pode editar a escala e gerenciar membros.", false);
+                    renderSchedule(); // Redesenha a tabela com campos editáveis
+                    // Não abre o modal de gerenciamento automaticamente
+                } else {
+                    errorEl.classList.remove('hidden');
+                }
+            };
+        };
+
+
+        // --- FLUXO PRINCIPAL ---
+
+        /**
+         * Inicia a aplicação após a autenticação.
+         */
+        const startApp = async () => {
+            try {
+                // 0. Inicializa a Configuração Admin e carrega a senha
+                await initializeAdminConfig();
+
+                // 1. Inicializa Membros (garante que a lista inicial existe no DB)
+                await initializeMembers();
+
+                // 2. Configura Seletores e Listeners
+                setupSelectors();
+                setupAdminModalListeners();
+                setupAdminLogic();
+
+                // 3. Inicia Listeners em tempo real (Este listener chama initializeSchedule internamente)
+                setupMembersListener();
+                setupScheduleListener(currentMonth, currentYear); 
+                
+            } catch (error) {
+                console.error("Erro fatal ao iniciar o aplicativo:", error);
+                updateStatus("Erro ao iniciar o aplicativo. Verifique o console.", true);
+            }
+        };
+
+        /**
+         * Processo de Autenticação no Firebase
+         */
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+                if (!isAuthReady) {
+                    isAuthReady = true;
+                    startApp();
+                }
+            } else {
+                // Tenta autenticar
+                try {
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                        // onAuthStateChanged será chamado novamente com o usuário logado
+                    } else {
+                        await signInAnonymously(auth);
+                        // onAuthStateChanged será chamado novamente com o usuário anônimo
+                    }
+                } catch (error) {
+                    console.error("Erro de Autenticação:", error);
+                    updateStatus(`Erro na autenticação. Detalhe: ${error.message}`, true);
+                    // Continua como não autenticado, mas permite o carregamento da tela pública
+                    userId = null;
+                    if (!isAuthReady) {
+                        isAuthReady = true;
+                        startApp();
+                    }
+                }
+            }
+        });
+
+    </script>
+</body>
+</html>
