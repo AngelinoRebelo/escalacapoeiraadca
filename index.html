@@ -751,9 +751,9 @@
             }
             if (docId === 'null') {
                 console.warn("Item não salvo no Firestore. Por favor, clique em 'Preencher Data' para salvar primeiro.");
-                // O loadSchedule já é chamado via onSnapshot (se a tentativa de save falhar), mas para o editor,
-                // que espera que o valor fique, a única forma de salvar o placeholder é pelo modal.
-                loadSchedule();
+                // Nenhuma ação adicional aqui, a tabela será recarregada via onSnapshot
+                // se for um placeholder, a mudança de valor é local e será perdida,
+                // mas a intenção de manter o campo habilitado é cumprida.
                 return;
             }
 
@@ -779,13 +779,14 @@
          */
         function createNameSelect(docId, fieldName, currentValue) {
             // Desabilita APENAS se o usuário NÃO for editor.
-            // Os placeholders (docId === 'null') são habilitados, mas a função updateFieldInline barra a escrita se não houver docId.
             const isDisabled = !isEditor; 
             
             let options = ``;
             const isADefinirSelected = currentValue === 'À DEFINIR' || !currentValue;
+            // Adiciona a opção "À DEFINIR"
             options += `<option value="À DEFINIR" ${isADefinirSelected ? 'selected' : ''}>À DEFINIR</option>`;
             
+            // Adiciona as opções de nomes predefinidos
             PREDEFINED_NAMES.forEach(name => {
                 const isSelected = name === currentValue ? 'selected' : '';
                 options += `<option value="${name}" ${isSelected}>${name}</option>`;
