@@ -132,6 +132,30 @@
             border-bottom-color: #D1D5DB;
         }
         
+        /* Estilo dos ícones de ação no divisor de semana */
+        .block-action-icon {
+            cursor: pointer;
+            color: #1E40AF;
+            transition: color 0.2s, transform 0.1s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+        }
+        .block-action-icon:hover {
+            transform: scale(1.1);
+        }
+        .block-action-icon.add:hover {
+            color: #10B981; /* Green-500 */
+            background-color: #D1FAE5;
+        }
+        .block-action-icon.remove:hover {
+            color: #EF4444; /* Red-500 */
+            background-color: #FEE2E2;
+        }
+        
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -365,12 +389,37 @@
             </div>
         </div>
     </div>
+    
+    <!-- Modal de Confirmação de Exclusão de Bloco -->
+    <div id="confirm-block-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-3xl w-full max-w-sm overflow-hidden transform transition-all duration-300">
+            <header class="bg-red-600 p-4 text-white">
+                <h2 class="text-xl font-bold">Excluir Bloco de Cultos</h2>
+            </header>
+            <div class="p-6">
+                <p id="confirm-block-message" class="text-gray-700 mb-6">
+                    Tem certeza de que deseja excluir o bloco completo de cultos? Esta ação removerá 3 itens do banco de dados.
+                </p>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="hideConfirmBlockModal()"
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg transition duration-300">
+                        Não, Cancelar
+                    </button>
+                    <button type="button" id="confirm-block-delete-btn"
+                            class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                        Sim, Excluir Bloco
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <!-- Imports do Firebase -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, collection, query, onSnapshot, setDoc, addDoc, deleteDoc, getDocs, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, collection, query, onSnapshot, setDoc, addDoc, deleteDoc, getDocs, runTransaction, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Variáveis globais 
         let app, db, auth;
@@ -490,14 +539,12 @@
             const targetMonth = month - 1; // 0-indexado
             const targetYear = year;
             
-            let currentDate = new Date(targetYear, targetMonth, 1); 
-            
             // Avança para o primeiro Domingo do mês (ou antes, se o mês começar no meio da semana)
             let firstDayOfMonth = new Date(targetYear, targetMonth, 1);
             let dayOffset = (0 - firstDayOfMonth.getDay() + 7) % 7; 
             let firstSunday = new Date(targetYear, targetMonth, 1 + dayOffset);
 
-            currentDate = firstSunday; // Começa a iteração no primeiro Domingo relevante
+            let currentDate = firstSunday; // Começa a iteração no primeiro Domingo relevante
 
             const daysInBlock = [0, 3, 5]; // Domingo, Quarta, Sexta
             const cultosInBlock = ["LOUVOR E ADORAÇÃO", "DOUTRINA", "LIBERTAÇÃO"];
@@ -507,28 +554,22 @@
             let maxIterations = 6; 
             for(let week = 0; week < maxIterations; week++) {
                 let blockItems = [];
-                
+                let blockStartDate = new Date(currentDate);
+
                 // Itera pelos 3 cultos na semana (D, Q, S)
                 for (let i = 0; i < 3; i++) {
-                    const blockDate = new Date(currentDate);
-                    blockDate.setDate(currentDate.getDate() + daysInBlock[i]);
+                    const blockDate = new Date(blockStartDate);
+                    blockDate.setDate(blockStartDate.getDate() + daysInBlock[i]);
                     
                     // Verifica se a data pertence ao mês selecionado.
-                    if (blockDate.getMonth() !== targetMonth) {
+                    // Adiciona se a data for no mês atual, ou se for no mês anterior mas o primeiro bloco
+                    if (blockDate.getMonth() !== targetMonth && week > 0) {
                         continue;
                     }
                     
                     const dayString = DAY_NAMES[blockDate.getDay()];
                     let cultoString = cultosInBlock[i];
                     
-                    // Aplica destaques específicos apenas para o visual, se necessário
-                    const currentBlockIndex = Math.floor(placeholderItems.length / 3);
-                    if (currentBlockIndex === 1 && i === 0 && dayString === 'DOMINGO') { 
-                        cultoString = "SANTA CEIA";
-                    } else if (currentBlockIndex === 2 && i === 1 && dayString === 'QUARTA-FEIRA') { 
-                        cultoString = "CULTO DE MISSÕES";
-                    }
-
                     blockItems.push({
                         id: 'null', // Use string 'null' para placeholders
                         date: `${String(blockDate.getDate()).padStart(2, '0')}/${String(blockDate.getMonth() + 1).padStart(2, '0')}/${blockDate.getFullYear()}`,
@@ -541,13 +582,16 @@
                     });
                 }
                 
-                placeholderItems.push(...blockItems);
+                // Adiciona o bloco se houver itens válidos
+                if (blockItems.length > 0) {
+                    placeholderItems.push(...blockItems);
+                }
 
                 // Avança para o próximo domingo
                 currentDate.setDate(currentDate.getDate() + 7); 
                 
-                // Se o próximo domingo já estiver fora do mês, para a iteração
-                if (currentDate.getMonth() !== targetMonth && currentDate.getDate() < 7) {
+                // Se o próximo domingo já estiver fora do mês E passou do primeiro bloco, para a iteração
+                if (currentDate.getMonth() !== targetMonth && week > 0) {
                     break;
                 }
             }
@@ -643,6 +687,65 @@
                 errorDisplay.classList.remove('hidden');
             }
         });
+        
+        // --- FUNÇÕES DE GERENCIAMENTO DE BLOCO (Adicionar/Remover Cultos) ---
+        
+        // Adiciona um novo culto ao final do bloco (usando o modal)
+        window.addNewCultoToBlock = function(blockIndex) {
+            if (!isEditor) return;
+            // A ideia é pré-popular a data para o próximo item do bloco (se houver 3) ou apenas abrir o modal
+            openModal('null', '', 'DOMINGO', 'LOUVOR E ADORAÇÃO', 'À DEFINIR', 'À DEFINIR', 'À DEFINIR');
+        }
+        
+        let itemsInBlockToRemove = [];
+        window.showConfirmBlockModal = function(blockItems) {
+            if (!isEditor) return;
+            
+            itemsInBlockToRemove = blockItems.filter(item => item.id !== 'null');
+            
+            if (itemsInBlockToRemove.length === 0) {
+                 // Se não há itens salvos, remove os placeholders forçando o recarregamento
+                 alert("Este bloco não possui itens salvos no banco de dados.");
+                 return;
+            }
+            
+            document.getElementById('confirm-block-message').innerHTML = `
+                Tem certeza de que deseja excluir o bloco completo de ${itemsInBlockToRemove.length} cultos? 
+                Esta ação removerá todos os itens salvos deste bloco do banco de dados.
+            `;
+            document.getElementById('confirm-block-modal').classList.remove('hidden');
+            document.getElementById('confirm-block-modal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+
+        window.hideConfirmBlockModal = function() {
+            itemsInBlockToRemove = [];
+            document.getElementById('confirm-block-modal').classList.add('hidden');
+            document.getElementById('confirm-block-modal').classList.remove('flex');
+            document.body.style.overflow = '';
+        }
+        
+        document.getElementById('confirm-block-delete-btn').addEventListener('click', async () => {
+            if (!isEditor || itemsInBlockToRemove.length === 0) {
+                hideConfirmBlockModal();
+                return;
+            }
+
+            try {
+                // Executa a exclusão de todos os documentos do bloco em uma transação
+                await runTransaction(db, async (transaction) => {
+                    for (const item of itemsInBlockToRemove) {
+                        const docRef = doc(db, getCurrentCollectionPath(), item.id);
+                        transaction.delete(docRef);
+                    }
+                });
+                console.log(`Bloco de ${itemsInBlockToRemove.length} itens excluído com sucesso.`);
+            } catch (error) {
+                console.error("Erro ao excluir o bloco de cultos:", error);
+            }
+            hideConfirmBlockModal();
+        });
+
 
         // --- FUNÇÃO DO NOVO BOTÃO SALVAR ESCALA (ARQUIVAMENTO) ---
         window.archiveScale = async function() {
@@ -906,7 +1009,9 @@
                 return;
             }
             if (docId === 'null') {
-                console.warn("Item não salvo no Firestore. Por favor, clique em 'Preencher Data' para salvar primeiro.");
+                console.warn("Item não salvo no Firestore. Por favor, use o botão 'Adicionar' ou 'Editar' para salvar o item primeiro.");
+                // Força o recarregamento para reverter o valor no campo
+                loadSchedule(); 
                 return;
             }
 
@@ -930,7 +1035,7 @@
          * Cria o elemento SELECT para edição inline.
          */
         function createNameSelect(docId, fieldName, currentValue, isArchived = false) {
-            // Desabilita SE o usuário NÃO for editor OU SE a escala for arquivada
+            // Desabilita SE a escala for arquivada OU SE o usuário NÃO for editor
             const isDisabled = isArchived || !isEditor; 
             
             let options = ``;
@@ -1006,16 +1111,53 @@
             if (targetBodyId === 'schedule-body') {
                 document.getElementById('no-data-message').classList.add('hidden');
             }
-
+            
+            let blockItems = []; // Itens dentro do bloco atual
+            
             items.forEach((item, index) => {
                 
-                // Insere o cabeçalho do bloco (divisor e títulos) a cada 3 itens
+                // --- INÍCIO DE UM NOVO BLOCO (A cada 3 itens) ---
                 if (index % 3 === 0) {
+                    blockItems = items.slice(index, index + 3); // Pega os 3 itens (ou menos se for o final)
+                    
                     const groupRow = document.createElement('tr');
                     const blockName = getBlockName(index);
+                    
+                    let blockActions = '';
+                    if (!isArchived && isEditor) {
+                         const blockActionAdd = `addNewCultoToBlock(${index})`;
+                         const blockActionRemove = `showConfirmBlockModal(${JSON.stringify(blockItems)})`;
+                         
+                         // Verifica se todos os itens do bloco SÃO placeholders
+                         const isFullPlaceholder = blockItems.every(i => i.id === 'null');
+                         
+                         // Se for full placeholder, não mostra a ação de remover bloco
+                         if (!isFullPlaceholder) {
+                             blockActions += `
+                                <svg onclick="${blockActionRemove}" title="Remover Bloco" 
+                                    xmlns="http://www.w3.org/2000/svg" class="block-action-icon remove w-5 h-5 ml-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M18 6l-12 12M6 6l12 12"/>
+                                </svg>
+                             `;
+                         }
+                         
+                         blockActions += `
+                            <svg onclick="${blockActionAdd}" title="Adicionar Novo Culto (Item)" 
+                                xmlns="http://www.w3.org/2000/svg" class="block-action-icon add w-5 h-5 ml-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M5 12h14M12 5v14"/>
+                            </svg>
+                         `;
+                    } else if (isArchived) {
+                         blockActions = `<span class="text-xs text-gray-500 font-normal">Arquivado</span>`;
+                    }
+
+
                     groupRow.innerHTML = `
-                        <td colspan="7" class="week-divider px-4 py-2 border-t border-b border-indigo-200">
-                            ${isArchived ? item.title || blockName : blockName}
+                        <td colspan="7" class="week-divider px-4 py-2 border-t border-b border-indigo-200 flex justify-between items-center">
+                            <span>${isArchived ? item.title || blockName : blockName}</span>
+                            <div class="flex items-center">
+                                ${blockActions}
+                            </div>
                         </td>
                     `;
                     tbody.appendChild(groupRow);
@@ -1037,19 +1179,22 @@
                     // Botão para editar Data/Dia/Culto (abre modal)
                     const editButtonAction = `openModal('${currentDocId}', '${item.date}', '${item.day}', '${item.culto}', '${item.portaria}', '${item.direcao}', '${item.preletor}')`;
                     
-                    actionButtons += `<button onclick="${editButtonAction}"
+                    // Mostra "Editar" ou "Excluir" apenas para itens JÁ SALVOS
+                    if (item.id !== 'null') {
+                        actionButtons += `<button onclick="${editButtonAction}"
                                 class="font-semibold focus:outline-none text-indigo-600 hover:text-indigo-900"
                                 title="Editar Data, Dia e Culto">
-                            ${item.id !== 'null' ? 'Editar Data' : 'Preencher Data'}
+                            Editar
                         </button>`;
                         
-                    // Botão de Excluir (só para itens JÁ SALVOS)
-                    if (item.id !== 'null') {
                         actionButtons += `<button onclick="showConfirmModal('${item.id}')"
                                 class="font-semibold focus:outline-none text-red-600 hover:text-red-900 ml-2"
                                 title="Excluir item da escala">
                             Excluir
                         </button>`;
+                    } else {
+                        // Para placeholders, o botão de adicionar está no bloco, não na linha.
+                        actionButtons = `<span class="text-gray-400">À Definir</span>`;
                     }
                 } else {
                     actionButtons = `<span class="text-gray-400">Visualizar</span>`;
@@ -1093,6 +1238,8 @@
             document.getElementById('day-input').value = day;
             document.getElementById('culto-input').value = culto;
             
+            // Note: Esses campos hidden só são usados para garantir que os valores "À DEFINIR" sejam passados,
+            // mas a edição real de nomes é feita inline.
             document.getElementById('portaria-input').value = portaria;
             document.getElementById('direcao-input').value = direcao;
             document.getElementById('preletor-input').value = preletor;
@@ -1130,6 +1277,7 @@
             const day = document.getElementById('day-input').value.trim();
             const culto = document.getElementById('culto-input').value.trim();
             
+            // Pega os valores atuais, que são "À DEFINIR" se não vierem de um item existente
             const portaria = document.getElementById('portaria-input').value.trim();
             const direcao = document.getElementById('direcao-input').value.trim();
             const preletor = document.getElementById('preletor-input').value.trim();
