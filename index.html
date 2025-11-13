@@ -14,7 +14,7 @@
             background-color: #f7f7f7;
         }
         /* Estilos personalizados para a tabela */
-        /* COR NEUTRA: Tonalidade escura para o cabeçalho */
+        /* COR NEUTRA: Tonalidade escura para o cabeçalho de seção (o novo cabeçalho repetido) */
         .table-header {
             background-color: #374151; /* Dark Gray/Indigo */
             color: white;
@@ -46,48 +46,111 @@
         .culto-missoes {
             background-color: #E0E7FF; /* Indigo-200 */
         }
-        /* Destaque para SANTA CEIA (Cor escura neutra com texto branco) */
-        .culto-santa-ceia {
-            background-color: #374151; /* Dark Gray/Indigo */
+        /* Garante que o texto dentro da linha escura fique escuro */
+        .culto-missoes td {
+            color: #1F2937 !important; 
+        }
+        
+        /* Remove o cabeçalho fixo original */
+        #main-table-header {
+            display: none;
+        }
+
+        /* Estilo para os SELECTs inline */
+        .inline-select {
+            appearance: none; /* Remove seta padrão */
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22%236b7280%22%3E%3Cpath%20fill-rule%3D%22evenodd%22%20d%3D%22M5.293%207.293a1%201%200%20011.414%200L10%2010.586l3.293-3.293a1%201%200%20111.414%201.414l-4%204a1%201%200%2001-1.414%200l-4-4a1%201%200%20010-1.414z%22%20clip-rule%3D%22evenodd%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.5rem center;
+            background-size: 0.8rem;
+            padding-right: 1.5rem; /* Espaço para a seta */
+            border: 1px solid #D1D5DB;
+            border-radius: 0.375rem;
+            font-size: 0.875rem; /* text-sm */
+            line-height: 1.25rem;
+            height: 1.75rem; /* Altura padrão */
+            width: 100%;
+            min-width: 120px;
+            max-width: 200px;
+            cursor: pointer;
+        }
+        
+        /* Estilo para o botão/ícone sutil de adição */
+        #subtle-add-btn {
+            background-color: #6366F1; /* Indigo-500 */
+            color: white;
+            padding: 8px 12px;
+            border-radius: 9999px; /* Full rounded */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: background-color 0.3s, transform 0.1s;
+        }
+        #subtle-add-btn:hover {
+            background-color: #4F46E5; /* Indigo-600 */
+            transform: scale(1.05);
+        }
+        /* Estilo para o botão de Logar/Sair */
+        #auth-button {
+            padding: 8px 16px;
+            font-weight: 600;
+            border-radius: 0.5rem;
+            transition: background-color 0.3s, opacity 0.3s;
+        }
+        #auth-button.logged-out {
+            background-color: #10B981; /* Green-500 */
             color: white;
         }
-        /* Garante que o texto dentro da linha escura fique branco */
-        .culto-santa-ceia td {
-            color: white !important;
+        #auth-button.logged-out:hover {
+            background-color: #059669; /* Green-600 */
         }
+        #auth-button.logged-in {
+            background-color: #EF4444; /* Red-500 */
+            color: white;
+        }
+        #auth-button.logged-in:hover {
+            background-color: #DC2626; /* Red-600 */
+        }
+        
     </style>
 </head>
 <body class="p-4 md:p-8">
 
     <div class="max-w-7xl mx-auto">
-        <!-- Título Principal -->
-        <header class="mb-8">
-            <h1 class="text-4xl font-extrabold text-gray-900 mb-2">Escala dos Cultos</h1>
-            <p id="auth-status" class="text-sm text-gray-600">Carregando autenticação...</p>
+        <!-- Título Principal e Botão de Login/Logout -->
+        <header class="mb-8 flex justify-between items-center">
+            <div>
+                <h1 class="text-4xl font-extrabold text-gray-900 mb-2">Escala dos Cultos</h1>
+                <p id="auth-status" class="text-sm text-gray-600">Carregando autenticação...</p>
+            </div>
+            <div class="flex items-center space-x-4">
+                <!-- Botão de Logar/Sair -->
+                <button id="auth-button" class="logged-out" onclick="handleAuthClick()">
+                    Logar para Editar
+                </button>
+                <!-- Ícone sutil para Adicionar Item (Apenas visível se logado) -->
+                <button id="subtle-add-btn" onclick="openModal()" title="Adicionar Novo Item na Escala (Data, Dia, Culto)" class="hidden">
+                    <!-- Ícone Plus (Lucide-react SVG inline) -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                        <path d="M5 12h14"/>
+                        <path d="M12 5v14"/>
+                    </svg>
+                </button>
+            </div>
         </header>
 
-        <!-- Controles, Filtros e Botão de Adicionar -->
-        <div class="flex justify-between items-center mb-6">
-            <!-- Selectors de Filtro -->
-            <div class="flex space-x-3">
-                <!-- Seletor de Mês -->
-                <select id="month-filter" class="p-2 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500"></select>
-                <!-- Seletor de Ano -->
-                <select id="year-filter" class="p-2 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500"></select>
-            </div>
-            <!-- Botão de Adicionar -->
-            <button id="add-entry-btn" onclick="openModal()"
-                class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50">
-                + Adicionar Item na Escala
-            </button>
+        <!-- Controles, Filtros -->
+        <div class="flex justify-start items-center mb-6 space-x-3">
+            <!-- Seletor de Mês -->
+            <select id="month-filter" class="p-2 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500"></select>
+            <!-- Seletor de Ano -->
+            <select id="year-filter" class="p-2 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500"></select>
         </div>
 
         <!-- Tabela de Escala (Responsiva) -->
         <div class="bg-white rounded-xl shadow-2xl overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
-                    <!-- Cabeçalho da Tabela -->
-                    <thead class="table-header sticky top-0 z-10">
+                    <!-- Cabeçalho Vazio (Mantido para a estrutura da tabela, mas invisível) -->
+                    <thead id="main-table-header">
                         <tr>
                             <th class="px-4 py-3 text-left text-xs uppercase tracking-wider rounded-tl-xl">Data</th>
                             <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Dia</th>
@@ -111,7 +174,7 @@
             </div>
             
             <div id="no-data-message" class="hidden p-6 text-center text-gray-500">
-                Nenhum item na escala. Adicione o primeiro item acima!
+                Nenhum item na escala. Logue como Editor para adicionar novas datas.
             </div>
         </div>
         
@@ -123,7 +186,43 @@
         </footer>
     </div>
     
-    <!-- Modal (Formulário) -->
+    <!-- Modal de Login -->
+    <div id="login-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-3xl w-full max-w-sm overflow-hidden transform transition-all duration-300">
+            <header class="bg-indigo-600 p-4 text-white">
+                <h2 class="text-2xl font-bold">Acesso de Editor</h2>
+            </header>
+            
+            <form id="login-form" class="p-6 space-y-4">
+                <p id="login-error" class="text-sm text-red-600 hidden">Credenciais inválidas. Tente novamente.</p>
+                <div>
+                    <label for="login-email" class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="login-email" required placeholder="editor@escala.com"
+                           class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2.5 focus:border-indigo-500 focus:ring-indigo-500">
+                </div>
+                
+                <div>
+                    <label for="login-password" class="block text-sm font-medium text-gray-700">Senha</label>
+                    <input type="password" id="login-password" required placeholder="senhasecreta123"
+                           class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2.5 focus:border-indigo-500 focus:ring-indigo-500">
+                    <p class="text-xs text-gray-500 mt-1">Email: editor@escala.com, Senha: senhasecreta123</p>
+                </div>
+
+                <div class="flex justify-between pt-4">
+                    <button type="button" onclick="closeLoginModal()"
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg transition duration-300">
+                        Cancelar
+                    </button>
+                    <button type="submit"
+                            class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                        Logar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal (Formulário) - Usado APENAS para Data, Dia e Culto -->
     <div id="entry-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden items-center justify-center p-4 z-50">
         <div class="bg-white rounded-xl shadow-3xl w-full max-w-lg overflow-hidden transform transition-all duration-300">
             <!-- Título do Modal -->
@@ -165,26 +264,10 @@
                            class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2.5 focus:border-indigo-500 focus:ring-indigo-500">
                 </div>
                 
-                <!-- Portaria -->
-                <div>
-                    <label for="portaria-input" class="block text-sm font-medium text-gray-700">Portaria</label>
-                    <input type="text" id="portaria-input" placeholder="Ex: Miss Vanessa/Obr Clemiton" required
-                           class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2.5 focus:border-indigo-500 focus:ring-indigo-500">
-                </div>
-                
-                <!-- Direção -->
-                <div>
-                    <label for="direcao-input" class="block text-sm font-medium text-gray-700">Direção</label>
-                    <input type="text" id="direcao-input" placeholder="Ex: Diac Gladimir" required
-                           class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2.5 focus:border-indigo-500 focus:ring-indigo-500">
-                </div>
-                
-                <!-- Preletor -->
-                <div>
-                    <label for="preletor-input" class="block text-sm font-medium text-gray-700">Preletor</label>
-                    <input type="text" id="preletor-input" placeholder="Ex: PR CARLOS" required
-                           class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2.5 focus:border-indigo-500 focus:ring-indigo-500">
-                </div>
+                <!-- Campos de Nomes (Escondidos, pois a edição é inline na tabela) -->
+                <input type="hidden" id="portaria-input" value="À DEFINIR">
+                <input type="hidden" id="direcao-input" value="À DEFINIR">
+                <input type="hidden" id="preletor-input" value="À DEFINIR">
 
                 <!-- Botões de Ação -->
                 <div class="flex justify-between pt-4">
@@ -226,16 +309,29 @@
     <!-- Imports do Firebase -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, collection, query, onSnapshot, setDoc, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Variáveis globais (Obrigatório usar __app_id e __firebase_config)
+        // Variáveis globais 
         let app, db, auth;
         let userId = '';
+        let isEditor = false; // Controla a permissão de edição
         // Variáveis de filtro
         let currentMonth = new Date().getMonth() + 1; // 1-12
         let currentYear = new Date().getFullYear();
         
+        // --- LISTA DE NOMES PREDEFINIDOS ---
+        const PREDEFINED_NAMES = [
+            "PR. GABRIEL", "PRB. LEANDRO", "MISS. KELLY", "MISS.ANA", 
+            "MISS.LORRANE", "MISS.ESTER", "DCa.SIMONE", "DCa. RAQUEL", 
+            "DCa. ROSA", "OB. CLEMILTON", "OB. MARCOS", "OB. JANETE", 
+            "OB. ANA ROCHA", "IR. GABRIEL", "IR. VITÓRIA", "DCa. CRISTIANE"
+        ].sort(); 
+        
+        // --- CREDENCIAIS DE EDITOR (APENAS PARA DEMONSTRAÇÃO) ---
+        const EDITOR_EMAIL = "editor@escala.com";
+        const EDITOR_PASSWORD = "senhasecreta123";
+
         // Define a configuração do Firebase
         const FIREBASE_CONFIG_OBJ = {
             apiKey: "AIzaSyAIVZC5Q8lfcMPCiv1oQzFm1oCajNB76c8",
@@ -268,15 +364,13 @@
         // Função para converter data DD/MM/AAAA em objeto Date para comparação e ordenação
         const parseDate = (dateString) => {
             const parts = dateString.split('/');
-            // A ordem é MM/DD/AAAA para o construtor do Date, mas a data na string é DD/MM/AAAA
-            // Criamos a data como AAAA, MM-1, DD
             if (parts.length === 3) {
                 const year = parseInt(parts[2], 10);
-                const month = parseInt(parts[1], 10) - 1; // Mês é 0-indexado
+                const month = parseInt(parts[1], 10) - 1; 
                 const day = parseInt(parts[0], 10);
                 return new Date(year, month, day);
             }
-            return new Date(0); // Data inválida
+            return new Date(0); 
         };
         
         // Função para obter o nome da semana/bloco (usada para o divisor de grupo)
@@ -284,7 +378,6 @@
             const weekNumber = Math.floor(index / 3) + 1;
             const weekNames = ["PRIMEIRA", "SEGUNDA", "TERCEIRA", "QUARTA", "QUINTA", "SEXTA", "SÉTIMA", "OITAVA"];
             
-            // Usa o mês filtrado atualmente para o título do bloco
             const monthName = MONTH_NAMES[currentMonth - 1].toUpperCase(); 
             
             if (weekNumber <= weekNames.length) {
@@ -318,12 +411,12 @@
             // Event Listeners
             monthSelect.onchange = (e) => {
                 currentMonth = parseInt(e.target.value, 10);
-                loadSchedule(); // Recarrega os dados com o novo filtro
+                loadSchedule(); 
             };
 
             yearSelect.onchange = (e) => {
                 currentYear = parseInt(e.target.value, 10);
-                loadSchedule(); // Recarrega os dados com o novo filtro
+                loadSchedule(); 
             };
         }
 
@@ -335,39 +428,51 @@
             const targetMonth = month - 1; // 0-indexado
             const targetYear = year;
             
-            // 1. Encontra o primeiro Domingo no mês/ano ou após o dia 1
             let currentDate = new Date(targetYear, targetMonth, 1); 
+            // Avança para o primeiro Domingo do mês (ou antes, se o mês começar no meio da semana)
             currentDate.setDate(currentDate.getDate() + (0 - currentDate.getDay() + 7) % 7); 
             
-            const daysInBlock = [0, 3, 5]; // Offsets: Domingo (0), Quarta (3), Sexta (5)
+            const daysInBlock = [0, 3, 5]; // Domingo, Quarta, Sexta
             const cultosInBlock = ["LOUVOR E ADORAÇÃO", "DOUTRINA", "LIBERTAÇÃO"];
             const placeholderItems = [];
 
-            // 2. Itera semanalmente até que a data ultrapasse o mês alvo
-            while (currentDate.getMonth() === targetMonth && currentDate.getFullYear() === targetYear) {
+            // Adiciona a lógica para garantir que começamos no primeiro domingo do mês ou antes
+            let firstDayOfMonth = new Date(targetYear, targetMonth, 1);
+            let dayOffset = (0 - firstDayOfMonth.getDay() + 7) % 7; 
+            let firstSunday = new Date(targetYear, targetMonth, 1 + dayOffset);
+
+            currentDate = firstSunday; // Começa a iteração no primeiro Domingo relevante
+
+            // Itera pelas semanas
+            let maxIterations = 6; 
+            for(let week = 0; week < maxIterations; week++) {
+                let foundItemInMonth = false;
+                let blockItems = [];
                 
-                // 3. Gera as 3 entradas do bloco semanal (Domingo, Quarta, Sexta)
+                // Itera pelos 3 cultos na semana (D, Q, S)
                 for (let i = 0; i < 3; i++) {
                     const blockDate = new Date(currentDate);
                     blockDate.setDate(currentDate.getDate() + daysInBlock[i]);
                     
-                    // Verifica se a data gerada ainda está dentro do mês alvo (importante para o fim do mês)
+                    // Verifica se a data pertence ao mês selecionado.
                     if (blockDate.getMonth() !== targetMonth) {
-                         continue; 
+                        continue;
                     }
+                    
+                    foundItemInMonth = true;
                     
                     const dayString = DAY_NAMES[blockDate.getDay()];
                     let cultoString = cultosInBlock[i];
                     
-                    // Adiciona destaques especiais para o segundo e terceiro bloco (simulação)
+                    // Aplica destaques específicos apenas para o visual, se necessário
                     const currentBlockIndex = Math.floor(placeholderItems.length / 3);
-                    if (currentBlockIndex === 1 && i === 0) { // Segundo bloco, Domingo
+                    if (currentBlockIndex === 1 && i === 0) { 
                         cultoString = "SANTA CEIA";
-                    } else if (currentBlockIndex === 2 && i === 1) { // Terceiro bloco, Quarta
+                    } else if (currentBlockIndex === 2 && i === 1) { 
                         cultoString = "CULTO DE MISSÕES";
                     }
 
-                    placeholderItems.push({
+                    blockItems.push({
                         id: null, 
                         date: `${String(blockDate.getDate()).padStart(2, '0')}/${String(blockDate.getMonth() + 1).padStart(2, '0')}/${blockDate.getFullYear()}`,
                         day: dayString,
@@ -379,50 +484,155 @@
                     });
                 }
                 
-                // 4. Avança para o próximo Domingo (próximo bloco)
+                placeholderItems.push(...blockItems);
+
+                // Avança para o próximo domingo
                 currentDate.setDate(currentDate.getDate() + 7); 
+                
+                // Se o próximo domingo já estiver fora do mês, para a iteração
+                if (currentDate.getMonth() !== targetMonth && currentDate.getDate() < 7) {
+                    break;
+                }
             }
+
             return placeholderItems;
         };
+        
+        // --- FUNÇÕES DE AUTENTICAÇÃO ---
 
+        function updateAuthUI() {
+            const authButton = document.getElementById('auth-button');
+            const subtleAddBtn = document.getElementById('subtle-add-btn');
 
-        // Inicialização do Firebase e Autenticação
+            if (isEditor) {
+                // Usuário logado como editor
+                authButton.textContent = 'Sair';
+                authButton.classList.remove('logged-out');
+                authButton.classList.add('logged-in');
+                subtleAddBtn.classList.remove('hidden'); // Mostra o botão de adicionar
+                document.getElementById('auth-status').textContent = `Editor logado: ${auth.currentUser.email || 'Anônimo Editor'}`;
+            } else {
+                // Usuário não logado como editor
+                authButton.textContent = 'Logar para Editar';
+                authButton.classList.remove('logged-in');
+                authButton.classList.add('logged-out');
+                subtleAddBtn.classList.add('hidden'); // Esconde o botão de adicionar
+                document.getElementById('auth-status').textContent = `Modo visualização. Faça login para editar.`;
+            }
+            // Chama renderTable para re-habilitar/desabilitar os SELECTs e botões de acordo com o novo estado de login
+            loadSchedule();
+        }
+        
+        window.openLoginModal = function() {
+            document.getElementById('login-modal').classList.remove('hidden');
+            document.getElementById('login-modal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+            document.getElementById('login-error').classList.add('hidden');
+        }
+
+        window.closeLoginModal = function() {
+            document.getElementById('login-modal').classList.add('hidden');
+            document.getElementById('login-modal').classList.remove('flex');
+            document.body.style.overflow = '';
+            document.getElementById('login-form').reset();
+        }
+
+        window.handleAuthClick = async function() {
+            if (isEditor) {
+                // Se estiver logado, faz logout e reinicia o estado
+                try {
+                    await signOut(auth);
+                    // O signOut fará com que onAuthStateChanged assine anonimamente novamente.
+                    // Resetamos o estado local de editor e forçamos a atualização da UI imediatamente.
+                    isEditor = false;
+                    updateAuthUI();
+                } catch (error) {
+                    console.error("Erro ao fazer logout:", error);
+                }
+            } else {
+                // Se não estiver logado, abre o modal de login
+                openLoginModal();
+            }
+        }
+        
+        // FUNÇÃO DE LOGIN MODIFICADA PARA VERIFICAÇÃO CLIENTE-SIDE (PARA EVITAR O ERRO 'auth/operation-not-allowed')
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const errorDisplay = document.getElementById('login-error');
+            
+            errorDisplay.classList.add('hidden');
+            
+            // VERIFICAÇÃO CLIENTE-SIDE: Checa as credenciais de editor contra as hardcoded
+            if (email === EDITOR_EMAIL && password === EDITOR_PASSWORD) {
+                
+                // Sucesso: Ativa o modo de editor localmente.
+                // Não é necessário chamar signInWithEmailAndPassword, o que evita o erro.
+                // O usuário já está autenticado anonimamente (Viewer role).
+                isEditor = true;
+                closeLoginModal();
+                updateAuthUI(); 
+                
+            } else {
+                // Falha na verificação
+                console.error("Erro de login: Credenciais incorretas.");
+                errorDisplay.textContent = "Credenciais inválidas. Tente novamente.";
+                errorDisplay.classList.remove('hidden');
+            }
+        });
+
+        // --- INICIALIZAÇÃO E OBSERVAÇÃO ---
         async function setupFirebase() {
-            // Verifica se a configuração existe.
             if (!firebaseConfig || !firebaseConfig.apiKey) {
                 console.error("Firebase config não encontrado. A persistência não funcionará.");
                 document.getElementById('auth-status').textContent = "ERRO: Configuração do Firebase ausente.";
                 return;
             }
             try {
-                // setLogLevel('debug'); // Descomente para ver logs do Firebase
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
 
-                // Autenticação
-                await new Promise(resolve => {
-                    onAuthStateChanged(auth, async (user) => {
-                        if (user) {
-                            userId = user.uid;
-                            document.getElementById('auth-status').textContent = `Usuário autenticado: ${userId.substring(0, 8)}...`;
-                        } else if (initialAuthToken) {
-                            await signInWithCustomToken(auth, initialAuthToken);
+                // Listener de estado de autenticação
+                onAuthStateChanged(auth, async (user) => {
+                    // 1. Tenta manter o estado de editor se o usuário for o editor e não estiver deslogando
+                    if (user && user.email === EDITOR_EMAIL) {
+                         isEditor = true; 
+                    } 
+                    
+                    // 2. Garante que há um usuário autenticado (anônimo ou token-based)
+                    if (!user) {
+                        if (initialAuthToken) {
+                            // Tenta logar com o token fornecido
+                            try {
+                                await signInWithCustomToken(auth, initialAuthToken);
+                                user = auth.currentUser;
+                            } catch (error) {
+                                console.warn("Falha ao usar token customizado. Tentando login anônimo.", error);
+                                await signInAnonymously(auth);
+                                user = auth.currentUser;
+                            }
                         } else {
-                            // Se não houver token, tenta anonimamente
-                            const anonymousUser = await signInAnonymously(auth);
-                            userId = anonymousUser.user.uid;
-                            document.getElementById('auth-status').textContent = `Usuário anônimo: ${userId.substring(0, 8)}...`;
+                            // Tenta anonimamente
+                            await signInAnonymously(auth);
+                            user = auth.currentUser;
                         }
-                        document.getElementById('display-app-id').textContent = appId;
-                        document.getElementById('display-user-id').textContent = userId;
-                        resolve();
-                    });
+                    }
+                    
+                    userId = user?.uid || crypto.randomUUID();
+                    document.getElementById('display-app-id').textContent = appId;
+                    document.getElementById('display-user-id').textContent = userId;
+                    
+                    // Atualiza a UI com o estado inicial (visualizador ou editor)
+                    updateAuthUI();
+                    
+                    // Só inicia a escuta do Firestore após o estado inicial ser definido
+                    if (!document.getElementById('month-filter').options.length) {
+                        updateFiltersUI();
+                        loadSchedule();
+                    }
                 });
-
-                // Inicia o listener de dados após a autenticação
-                updateFiltersUI(); // Chama para popular os seletores antes de carregar
-                loadSchedule();
 
             } catch (error) {
                 console.error("Erro na inicialização ou autenticação do Firebase:", error);
@@ -430,15 +640,9 @@
             }
         }
 
-        // Carrega e escuta as mudanças na escala (Real-time)
         function loadSchedule() {
-            if (!db) {
-                console.error("Firestore não inicializado.");
-                return;
-            }
-
+            if (!db) return;
             const scaleRef = collection(db, getCollectionPath());
-            
             const q = query(scaleRef); 
 
             onSnapshot(q, (snapshot) => {
@@ -447,32 +651,28 @@
                     schedule.push({ id: doc.id, ...doc.data() });
                 });
 
-                // 1. FILTRAGEM: Filtra a lista pelo mês e ano selecionados
+                // 1. FILTRAGEM
                 schedule = schedule.filter(item => {
-                    // Espera formato DD/MM/AAAA
                     const parts = item.date.split('/');
                     if (parts.length === 3) {
                         const itemMonth = parseInt(parts[1], 10);
                         const itemYear = parseInt(parts[2], 10);
-                        
                         return itemMonth === currentMonth && itemYear === currentYear;
                     }
-                    return false; // Ignora datas mal formatadas
+                    return false; 
                 });
-
 
                 // 2. ORDENAÇÃO LOCAL
                 schedule.sort((a, b) => {
                     const dateA = parseDate(a.date);
                     const dateB = parseDate(b.date);
-                    // Compara primeiro por data e depois pelo timestamp para desempate
                     if (dateA - dateB !== 0) {
                         return dateA - dateB;
                     }
                     return a.timestamp - b.timestamp;
                 });
                 
-                // 3. PLACEHOLDERS: Se a lista filtrada estiver vazia, gera placeholders para o mês/ano filtrado
+                // 3. PLACEHOLDERS: Se a lista filtrada estiver vazia, gera placeholders
                 const finalSchedule = schedule.length === 0 ? generatePlaceholderItems(currentMonth, currentYear) : schedule;
 
                 renderTable(finalSchedule, schedule.length === 0);
@@ -486,20 +686,71 @@
         }
 
         /**
-         * Retorna a classe CSS da linha com base no tipo de culto para replicar o visual.
+         * Envia uma atualização de campo (Portaria, Direção, Preletor) diretamente para o Firestore.
          */
+        window.updateFieldInline = async function (docId, field, value) {
+            if (!isEditor) {
+                console.error("Permissão negada. É necessário estar logado como Editor para modificar.");
+                loadSchedule(); // Restaura o estado para o valor do BD
+                return;
+            }
+            if (docId === 'null') {
+                console.warn("Item não salvo no Firestore. Por favor, clique em 'Preencher Data' para salvar primeiro.");
+                return;
+            }
+
+            const docRef = doc(db, getCollectionPath(), docId);
+            const updateData = {
+                [field]: value,
+                // Usa o email do editor hardcoded ou o email do usuário logado se for o editor
+                lastModifiedBy: isEditor ? (auth.currentUser?.email || EDITOR_EMAIL) : 'Visualizador',
+                timestamp: new Date().getTime() 
+            };
+
+            try {
+                await setDoc(docRef, updateData, { merge: true });
+                console.log(`Documento ${docId} campo ${field} atualizado para ${value}.`);
+            } catch (error) {
+                console.error("Erro ao atualizar o documento inline:", error);
+                loadSchedule(); 
+            }
+        }
+        
+        /**
+         * Cria o elemento SELECT para edição inline.
+         */
+        function createNameSelect(docId, fieldName, currentValue) {
+            // Desabilita APENAS se o usuário NÃO for editor.
+            // Os placeholders (docId === 'null') são habilitados, mas a função updateFieldInline barra a escrita se não houver docId.
+            const isDisabled = !isEditor; 
+            
+            let options = ``;
+            const isADefinirSelected = currentValue === 'À DEFINIR' || !currentValue;
+            options += `<option value="À DEFINIR" ${isADefinirSelected ? 'selected' : ''}>À DEFINIR</option>`;
+            
+            PREDEFINED_NAMES.forEach(name => {
+                const isSelected = name === currentValue ? 'selected' : '';
+                options += `<option value="${name}" ${isSelected}>${name}</option>`;
+            });
+
+            return `
+                <select 
+                    class="inline-select ${isDisabled ? 'opacity-75 bg-gray-100 cursor-default' : ''}"
+                    onchange="updateFieldInline('${docId}', '${fieldName}', this.value)"
+                    ${isDisabled ? 'disabled' : ''}
+                >
+                    ${options}
+                </select>
+            `;
+        }
+
         function getRowClass(culto, index) {
             const upperCulto = culto.toUpperCase();
             
-            // 1. Prioriza destaques específicos
-            if (upperCulto.includes('SANTA CEIA')) {
-                return 'culto-santa-ceia';
-            }
             if (upperCulto.includes('CULTO DE MISSÕES')) {
                 return 'culto-missoes';
             }
             
-            // 2. Aplica cores neutras alternadas: (0=cinza claro, 1=azul claro, 2=cinza claro)
             const blockIndex = index % 3; 
 
             if (blockIndex === 0) {
@@ -511,8 +762,23 @@
             }
         }
 
+        function createHeaderRow() {
+             const headerRow = document.createElement('tr');
+             headerRow.className = 'table-header';
+             headerRow.innerHTML = `
+                <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Data</th>
+                <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Dia</th>
+                <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Culto</th>
+                <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Portaria</th>
+                <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Direção</th>
+                <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Preletor</th>
+                <th class="px-4 py-3 text-center text-xs uppercase tracking-wider">Ações</th>
+            `;
+            return headerRow;
+        }
 
-        // Renderiza a Tabela com agrupamento a cada 3 itens
+
+        // Renderiza a Tabela
         function renderTable(items, isPlaceholder) {
             const tbody = document.getElementById('schedule-body');
             tbody.innerHTML = '';
@@ -523,98 +789,105 @@
             }
             document.getElementById('no-data-message').classList.add('hidden');
 
-            // Itera sobre os itens para criar as linhas
             items.forEach((item, index) => {
                 
-                // Adiciona o divisor de grupo a cada 3 itens (item 0, 3, 6, etc.)
+                // Insere o cabeçalho do bloco (divisor e títulos) a cada 3 itens
                 if (index % 3 === 0) {
                     const groupRow = document.createElement('tr');
-                    // Usa o mês/ano filtrado para nomear o bloco
                     const blockName = getBlockName(index);
-
                     groupRow.innerHTML = `
                         <td colspan="7" class="week-divider px-4 py-2 border-t border-b border-indigo-200">
                             ${blockName}
                         </td>
                     `;
                     tbody.appendChild(groupRow);
+                    tbody.appendChild(createHeaderRow()); // Cabeçalho repetido
                 }
 
                 const row = document.createElement('tr');
-                // Passa o índice do item para a função de classe para as cores alternadas no bloco
                 const rowClass = getRowClass(item.culto, index);
-                
-                // Adiciona a classe de cor da linha e o hover
                 row.className = `${rowClass} hover:opacity-80 transition duration-150`;
+                const textColorClass = 'text-gray-900';
                 
-                // A cor do texto para células que estão em destaque (santa ceia) deve ser branca
-                const textColorClass = rowClass.includes('culto-santa-ceia') ? 'text-white' : 'text-gray-900';
-                
-                // Se for placeholder, a ação de 'Editar' é na verdade 'Abrir modal para preencher'
-                const editButtonAction = item.id 
-                    ? `editEntry('${item.id}', '${item.date}', '${item.day}', '${item.culto}', '${item.portaria}', '${item.direcao}', '${item.preletor}')`
-                    // Para placeholder, passamos todos os dados, mas o id é null, forçando a criação (addDoc)
-                    : `openModal(null, '${item.date}', '${item.day}', '${item.culto}', '${item.portaria}', '${item.direcao}', '${item.preletor}')`;
-                
-                // O botão de Excluir só aparece se for um item salvo (com ID)
-                const deleteButton = item.id 
-                    ? `<button onclick="showConfirmModal('${item.id}')"
-                                class="font-semibold focus:outline-none ${rowClass.includes('culto-santa-ceia') ? 'text-white hover:text-red-300' : 'text-red-600 hover:text-red-900'}">
-                            Excluir
-                        </button>`
-                    : '';
-                    
-                // Ajusta a cor do texto do culto para ficar visível (mesmo com cores neutras, usa um tom de azul para destaque)
-                const cultoTextColorClass = rowClass.includes('culto-santa-ceia') ? 'text-white' : 'text-indigo-700';
+                const currentDocId = item.id || 'null'; // Use 'null' string para placeholders
 
+                // O botão de "Editar Data" e "Excluir" só aparece se o usuário for editor
+                let actionButtons = '';
+                if (isEditor) {
+                    // Botão para editar Data/Dia/Culto (abre modal)
+                    const editButtonAction = `openModal('${currentDocId}', '${item.date}', '${item.day}', '${item.culto}', '${item.portaria}', '${item.direcao}', '${item.preletor}')`;
+                    
+                    actionButtons += `<button onclick="${editButtonAction}"
+                                class="font-semibold focus:outline-none text-indigo-600 hover:text-indigo-900"
+                                title="Editar Data, Dia e Culto">
+                            ${item.id ? 'Editar Data' : 'Preencher Data'}
+                        </button>`;
+                        
+                    // Botão de Excluir (só para itens JÁ SALVOS)
+                    if (item.id) {
+                        actionButtons += `<button onclick="showConfirmModal('${item.id}')"
+                                class="font-semibold focus:outline-none text-red-600 hover:text-red-900 ml-2"
+                                title="Excluir item da escala">
+                            Excluir
+                        </button>`;
+                    }
+                } else {
+                    actionButtons = `<span class="text-gray-400">Visualizar</span>`;
+                }
+                
+                const cultoTextColorClass = 'text-indigo-700';
+                
+                const portariaSelect = createNameSelect(currentDocId, 'portaria', item.portaria);
+                const direcaoSelect = createNameSelect(currentDocId, 'direcao', item.direcao);
+                const preletorSelect = createNameSelect(currentDocId, 'preletor', item.preletor);
 
                 row.innerHTML = `
                     <td class="px-4 py-3 whitespace-nowrap text-sm font-medium ${textColorClass}">${item.date}</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm ${textColorClass}">${item.day}</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm culto-cell font-bold ${cultoTextColorClass}">${item.culto}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm ${textColorClass}">${item.portaria}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm ${textColorClass}">${item.direcao}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm ${textColorClass}">${item.preletor}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                        <button onclick="${editButtonAction}"
-                                class="font-semibold focus:outline-none ${rowClass.includes('culto-santa-ceia') ? 'text-white hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-900'}">
-                            ${item.id ? 'Editar' : 'Preencher'}
-                        </button>
-                        ${deleteButton}
+                    
+                    <td class="px-4 py-2 whitespace-nowrap text-sm">${portariaSelect}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm">${direcaoSelect}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm">${preletorSelect}</td>
+                    
+                    <td class="px-4 py-3 whitespace-nowrap text-center text-sm font-medium space-x-2">
+                        ${actionButtons}
                     </td>
                 `;
                 tbody.appendChild(row);
             });
         }
 
-        // --- Funções de Modal e CRUD (Expostas no escopo global para o HTML) ---
-        window.openModal = function (docId = null, date = '', day = 'DOMINGO', culto = '', portaria = '', direcao = '', preletor = '') {
+        // --- Funções de Modal e CRUD ---
+        window.openModal = function (docId = 'null', date = '', day = 'DOMINGO', culto = '', portaria = 'À DEFINIR', direcao = 'À DEFINIR', preletor = 'À DEFINIR') {
+            if (!isEditor) {
+                console.error("Permissão negada. É necessário estar logado como Editor.");
+                return;
+            }
             const modal = document.getElementById('entry-modal');
             const title = document.getElementById('modal-title');
             const saveButton = document.getElementById('save-button');
-            const form = document.getElementById('entry-form');
-
-            // Preenche o formulário
-            document.getElementById('entry-id').value = docId || '';
+            
+            document.getElementById('entry-id').value = docId === 'null' ? '' : docId; // Limpa se for placeholder
             document.getElementById('date-input').value = date;
             document.getElementById('day-input').value = day;
             document.getElementById('culto-input').value = culto;
-            document.getElementById('portaria-input').value = portaria === "À DEFINIR" ? '' : portaria;
-            document.getElementById('direcao-input').value = direcao === "À DEFINIR" ? '' : direcao;
-            document.getElementById('preletor-input').value = preletor === "À DEFINIR" ? '' : preletor;
+            
+            document.getElementById('portaria-input').value = portaria;
+            document.getElementById('direcao-input').value = direcao;
+            document.getElementById('preletor-input').value = preletor;
 
-            // Configura o título e o botão
-            if (docId) {
-                title.textContent = 'Editar Item da Escala';
-                saveButton.textContent = 'Atualizar Item';
+            if (docId !== 'null') {
+                title.textContent = 'Editar Data/Culto (Nomes: Edição Direta)';
+                saveButton.textContent = 'Atualizar Data/Culto';
             } else {
-                title.textContent = 'Preencher Novo Item';
+                title.textContent = 'Adicionar Novo Item na Escala';
                 saveButton.textContent = 'Salvar Novo Item';
             }
 
             modal.classList.remove('hidden');
             modal.classList.add('flex');
-            document.body.style.overflow = 'hidden'; // Bloqueia o scroll de fundo
+            document.body.style.overflow = 'hidden'; 
         };
 
         window.closeModal = function () {
@@ -624,26 +897,24 @@
             document.body.style.overflow = '';
             document.getElementById('entry-form').reset();
         };
-        
-        // Wrapper para editar (apenas para não poluir a função editEntry com argumentos desnecessários)
-        window.editEntry = function(id, date, day, culto, portaria, direcao, preletor) {
-            openModal(id, date, day, culto, portaria, direcao, preletor);
-        }
 
-        // Lidar com o envio do formulário (Salvar/Atualizar)
         document.getElementById('entry-form').addEventListener('submit', async (e) => {
             e.preventDefault();
+            if (!isEditor) {
+                console.error("Permissão negada. É necessário estar logado como Editor para modificar.");
+                return;
+            }
             
             const docId = document.getElementById('entry-id').value;
             const date = document.getElementById('date-input').value.trim();
             const day = document.getElementById('day-input').value.trim();
             const culto = document.getElementById('culto-input').value.trim();
-            // Se os campos de nome estiverem vazios, define como "À DEFINIR"
-            const portaria = document.getElementById('portaria-input').value.trim() || 'À DEFINIR';
-            const direcao = document.getElementById('direcao-input').value.trim() || 'À DEFINIR';
-            const preletor = document.getElementById('preletor-input').value.trim() || 'À DEFINIR';
+            
+            // Pega os nomes da tabela (se estiver editando um item existente no modal, eles podem ter sido atualizados)
+            const portaria = document.getElementById('portaria-input').value.trim();
+            const direcao = document.getElementById('direcao-input').value.trim();
+            const preletor = document.getElementById('preletor-input').value.trim();
 
-            // Validação de Data (apenas para garantir o formato)
             if (!/^\d{2}\/\d{2}\/\d{4}$/.test(date)) {
                 console.error("Erro de validação: Por favor, use o formato de data DD/MM/AAAA.");
                 return;
@@ -653,29 +924,26 @@
                 date: date,
                 day: day,
                 culto: culto,
-                portaria: portaria,
+                portaria: portaria, 
                 direcao: direcao,
                 preletor: preletor,
-                timestamp: new Date().getTime(), // Para ordenação
-                lastModifiedBy: userId 
+                timestamp: new Date().getTime(), 
+                lastModifiedBy: isEditor ? (auth.currentUser?.email || EDITOR_EMAIL) : 'Visualizador',
             };
             
-            closeModal(); // Fecha imediatamente para dar feedback de progresso
+            closeModal(); 
 
             try {
                 if (docId) {
-                    // Atualizar item existente
                     const docRef = doc(db, getCollectionPath(), docId);
-                    await setDoc(docRef, newEntry, { merge: true });
+                    await setDoc(docRef, newEntry, { merge: true }); 
                     console.log("Documento atualizado com sucesso:", docId);
                 } else {
-                    // Adicionar novo item (usado para salvar o placeholder preenchido)
                     await addDoc(collection(db, getCollectionPath()), newEntry);
                     console.log("Novo documento adicionado com sucesso.");
                 }
             } catch (error) {
                 console.error("Erro ao salvar o documento:", error);
-                // Em um app real, você mostraria uma notificação de erro aqui
             }
         });
         
@@ -683,6 +951,10 @@
         let docIdToDelete = null;
 
         window.showConfirmModal = function(id) {
+            if (!isEditor) {
+                console.error("Permissão negada. É necessário estar logado como Editor.");
+                return;
+            }
             docIdToDelete = id;
             document.getElementById('confirm-modal').classList.remove('hidden');
             document.getElementById('confirm-modal').classList.add('flex');
@@ -697,6 +969,12 @@
         };
 
         document.getElementById('confirm-delete-btn').addEventListener('click', async () => {
+            if (!isEditor) {
+                console.error("Permissão negada. É necessário estar logado como Editor.");
+                hideConfirmModal();
+                return;
+            }
+
             if (docIdToDelete && db) {
                 try {
                     await deleteDoc(doc(db, getCollectionPath(), docIdToDelete));
