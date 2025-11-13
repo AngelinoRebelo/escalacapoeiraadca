@@ -339,7 +339,7 @@
                 const initialPassword = "admin123"; // Senha padrão inicial
                 await setDoc(adminConfigRef, { password: initialPassword });
                 adminPassword = initialPassword;
-                console.log("Configuração Admin inicial criada com senha padrão.");
+                // Não logar senha no console em um ambiente de produção real
             } else {
                 adminPassword = adminConfigDoc.data().password;
             }
@@ -359,7 +359,6 @@
                     "Ob. Marcos", "Ob. Clemiltom", "Ir. Vitória", "Ir. Natalia", "Ir. Gabriel"
                 ];
                 await setDoc(memberDocRef, { nomes: initialMembers });
-                console.log("Lista inicial de membros criada.");
             }
         };
 
@@ -374,7 +373,7 @@
                 const initialSchedule = generateInitialSchedule(month, year);
                 if (initialSchedule.length > 0) {
                     await setDoc(scheduleRef, { escalas: initialSchedule });
-                    console.log(`Escala inicial para ${month}/${year} criada com ${initialSchedule.length} cultos.`);
+                    // Não precisa logar aqui, o listener fará o trabalho
                 }
             }
         };
@@ -389,7 +388,6 @@
                 await updateDoc(memberDocRef, {
                     nomes: arrayUnion(name)
                 });
-                console.log(`Membro ${name} adicionado.`);
             } catch (error) {
                 console.error("Erro ao adicionar membro:", error);
             }
@@ -404,7 +402,6 @@
                 await updateDoc(memberDocRef, {
                     nomes: arrayRemove(name)
                 });
-                console.log(`Membro ${name} removido.`);
             } catch (error) {
                 console.error("Erro ao remover membro:", error);
             }
@@ -465,7 +462,6 @@
                 
                 // Usar setDoc com merge para garantir que a collection é criada se não existir
                 await setDoc(scheduleRef, { escalas: [...currentEscalas, newCulto] }, { merge: true });
-                console.log(`Novo culto (${name} em ${formattedDate}) adicionado.`);
             } catch (error) {
                 console.error("Erro ao adicionar novo culto:", error);
             }
@@ -850,7 +846,8 @@
                 
             } catch (error) {
                 console.error("Erro fatal ao iniciar o aplicativo:", error);
-                updateStatus("Erro ao iniciar o aplicativo. Verifique o console.", true);
+                // Atualiza o status com a mensagem de erro detalhada
+                updateStatus(`Erro fatal ao iniciar o aplicativo: ${error.message}`, true);
             }
         };
 
@@ -876,7 +873,8 @@
                     }
                 } catch (error) {
                     console.error("Erro de Autenticação:", error);
-                    updateStatus(`Erro na autenticação. Detalhe: ${error.message}`, true);
+                    updateStatus(`Erro de Autenticação: ${error.message}. Verifique as regras de segurança do Firebase.`, true);
+                    
                     // Continua como não autenticado, mas permite o carregamento da tela pública
                     userId = null;
                     if (!isAuthReady) {
