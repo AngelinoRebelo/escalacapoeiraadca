@@ -730,6 +730,7 @@
         // Adiciona um novo culto ao final do bloco (usando o modal)
         window.addNewCultoToBlock = function(blockIndex) {
             if (!isEditor) return;
+            // Abre o modal para o usuário inserir data/culto do novo item
             openModal('null', '', 'DOMINGO', 'LOUVOR E ADORAÇÃO', 'À DEFINIR', 'À DEFINIR', 'À DEFINIR');
         }
         
@@ -737,11 +738,11 @@
         window.showConfirmBlockModal = function(blockItems) {
             if (!isEditor) return;
             
+            // Filtra apenas itens SALVOS (com ID) para remoção
             itemsInBlockToRemove = blockItems.filter(item => item.id !== 'null');
             
             if (itemsInBlockToRemove.length === 0) {
-                 // Se não há itens salvos, remove os placeholders forçando o recarregamento
-                 alert("Este bloco não possui itens salvos no banco de dados.");
+                 alert("Este bloco não possui itens salvos no banco de dados para serem removidos.");
                  return;
             }
             
@@ -789,9 +790,13 @@
                 console.warn("É necessário logar como editor para salvar a escala.");
                 return;
             }
-             if (allCurrentScheduleItems.length === 0) {
-                alert("Nenhum item salvo no mês/ano selecionado para arquivar.");
-                console.warn("Nenhum item na escala para arquivar.");
+            
+            // Filtra para arquivar APENAS itens que foram realmente salvos (não placeholders)
+            const itemsToArchive = allCurrentScheduleItems.filter(item => item.id !== 'null');
+             
+             if (itemsToArchive.length === 0) {
+                alert("Nenhum item salvo no mês/ano selecionado para arquivar. Por favor, preencha as datas primeiro.");
+                console.warn("Nenhum item salvo no Firestore para arquivar.");
                 return;
             }
             
@@ -812,8 +817,8 @@
                     title: `Escala de ${monthName} de ${currentYear}`,
                     archivedAt: new Date().toISOString(),
                     archivedBy: auth.currentUser?.email || 'Editor (Email/Senha)',
-                    // Salva a lista de itens do mês/ano filtrado
-                    schedule: allCurrentScheduleItems.map(({ id, ...rest }) => rest)
+                    // Salva a lista de itens do mês/ano filtrado (apenas os salvos)
+                    schedule: itemsToArchive.map(({ id, ...rest }) => rest)
                 };
 
                 // 2. Salva como um único documento na coleção de Arquivos, usando setDoc para SOBRESCREVER
@@ -1050,8 +1055,9 @@
                 return;
             }
             if (docId === 'null') {
-                console.warn("Item não salvo no Firestore. Por favor, use o botão 'Editar' na linha para salvar o item primeiro.");
-                // Retorna sem chamar loadSchedule para evitar o bug de seleção
+                console.warn("Item não salvo no Firestore. Por favor, use o botão 'Preencher' na linha para salvar o item primeiro.");
+                // Retorna sem chamar loadSchedule para evitar o bug de seleção,
+                // mas a seleção visualmente não se manterá, forçando o usuário a salvar o item.
                 return;
             }
 
@@ -1064,7 +1070,7 @@
 
             try {
                 await setDoc(docRef, updateData, { merge: true });
-                // O onSnapshot garantirá a atualização visual
+                // O onSnapshot garantirá a atualização visual, corrigindo o problema de seleção.
                 console.log(`Documento ${docId} campo ${field} atualizado para ${value}.`);
             } catch (error) {
                 console.error("Erro ao atualizar o documento inline:", error);
@@ -1236,6 +1242,7 @@
                     
                     // Mostra "Editar" ou "Excluir" apenas para itens JÁ SALVOS
                     if (item.id !== 'null') {
+                         // Botão é "Editar" para itens salvos
                         actionButtons += `<button onclick="${editButtonAction}"
                                 class="font-semibold focus:outline-none text-indigo-600 hover:text-indigo-900"
                                 title="Editar Data, Dia e Culto">
@@ -1248,11 +1255,15 @@
                             Excluir
                         </button>`;
                     } else {
-                        // Para placeholders, o botão de adicionar está no bloco, não na linha.
-                        actionButtons = `<span class="text-gray-400"></span>`;
+                        // Botão é "Preencher" para placeholders
+                        actionButtons += `<button onclick="${editButtonAction}"
+                                class="font-semibold focus:outline-none text-indigo-600 hover:text-indigo-900"
+                                title="Preencher Data, Dia e Culto para salvar este item">
+                            Preencher
+                        </button>`;
                     }
                 } else {
-                    actionButtons = `<span class="text-gray-400"></span>`; // Remove o texto "Visualizar"
+                    actionButtons = `<span class="text-gray-400"></span>`; 
                 }
                 
                 const cultoTextColorClass = 'text-indigo-700';
@@ -1293,8 +1304,7 @@
             document.getElementById('day-input').value = day;
             document.getElementById('culto-input').value = culto;
             
-            // Note: Esses campos hidden só são usados para garantir que os valores "À DEFINIR" sejam passados,
-            // mas a edição real de nomes é feita inline.
+            // Pega os valores atuais (necessário para o caso de editar um item salvo)
             document.getElementById('portaria-input').value = portaria;
             document.getElementById('direcao-input').value = direcao;
             document.getElementById('preletor-input').value = preletor;
@@ -1332,7 +1342,8 @@
             const day = document.getElementById('day-input').value.trim();
             const culto = document.getElementById('culto-input').value.trim();
             
-            // Pega os valores atuais, que são "À DEFINIR" se não vierem de um item existente
+            // Pega os valores dos campos HIDDEN. Para placeholders, será "À DEFINIR".
+            // Para itens salvos, será o nome que já estava no Firestore.
             const portaria = document.getElementById('portaria-input').value.trim();
             const direcao = document.getElementById('direcao-input').value.trim();
             const preletor = document.getElementById('preletor-input').value.trim();
