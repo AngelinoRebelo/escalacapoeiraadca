@@ -785,8 +785,13 @@
 
         // --- FUNÇÃO DO NOVO BOTÃO SALVAR ESCALA (ARQUIVAMENTO/SOBRESCREVER) ---
         window.archiveScale = async function() {
-            if (!isEditor || allCurrentScheduleItems.length === 0) {
-                console.warn("Nenhum item na escala para arquivar ou sem permissão.");
+            if (!isEditor) {
+                console.warn("É necessário logar como editor para salvar a escala.");
+                return;
+            }
+             if (allCurrentScheduleItems.length === 0) {
+                alert("Nenhum item salvo no mês/ano selecionado para arquivar.");
+                console.warn("Nenhum item na escala para arquivar.");
                 return;
             }
             
@@ -1041,14 +1046,12 @@
         window.updateFieldInline = async function (docId, field, value) {
             if (!isEditor) {
                 console.error("Permissão negada. É necessário estar logado como Editor para modificar.");
-                // Força o recarregamento para reverter o valor no campo
-                loadSchedule(); 
+                // Nãp chama loadSchedule aqui para evitar o bug de seleção.
                 return;
             }
             if (docId === 'null') {
                 console.warn("Item não salvo no Firestore. Por favor, use o botão 'Editar' na linha para salvar o item primeiro.");
-                // Força o recarregamento para reverter o valor no campo
-                loadSchedule(); 
+                // Retorna sem chamar loadSchedule para evitar o bug de seleção
                 return;
             }
 
@@ -1061,10 +1064,10 @@
 
             try {
                 await setDoc(docRef, updateData, { merge: true });
+                // O onSnapshot garantirá a atualização visual
                 console.log(`Documento ${docId} campo ${field} atualizado para ${value}.`);
             } catch (error) {
                 console.error("Erro ao atualizar o documento inline:", error);
-                loadSchedule(); 
             }
         }
         
