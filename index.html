@@ -132,7 +132,44 @@
             border-bottom-color: #D1D5DB;
         }
         
-        /* Estilo dos ícones de ação no divisor de semana */
+        /* Estilo para a célula de erro/tooltip de não logado */
+        .tooltip-container {
+            position: relative;
+            display: inline-block;
+        }
+        .tooltip-text {
+            visibility: hidden;
+            width: 150px;
+            background-color: #374151;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px 0;
+            position: absolute;
+            z-index: 10;
+            bottom: 125%; 
+            left: 50%;
+            margin-left: -75px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.75rem;
+        }
+        .tooltip-container:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+        .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #374151 transparent transparent transparent;
+        }
+
+        /* Estilo para os ícones de ação no divisor de semana */
         .block-action-icon {
             cursor: pointer;
             color: #1E40AF;
@@ -359,7 +396,7 @@
                             class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg transition duration-300">
                         Cancelar
                     </button>
-                    <button type="submit" id="save-button"
+                    <button type="submit" id="save-item-button"
                             class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
                         Salvar Item
                     </button>
@@ -693,7 +730,6 @@
         // Adiciona um novo culto ao final do bloco (usando o modal)
         window.addNewCultoToBlock = function(blockIndex) {
             if (!isEditor) return;
-            // A ideia é pré-popular a data para o próximo item do bloco (se houver 3) ou apenas abrir o modal
             openModal('null', '', 'DOMINGO', 'LOUVOR E ADORAÇÃO', 'À DEFINIR', 'À DEFINIR', 'À DEFINIR');
         }
         
@@ -747,7 +783,7 @@
         });
 
 
-        // --- FUNÇÃO DO NOVO BOTÃO SALVAR ESCALA (ARQUIVAMENTO) ---
+        // --- FUNÇÃO DO NOVO BOTÃO SALVAR ESCALA (ARQUIVAMENTO/SOBRESCREVER) ---
         window.archiveScale = async function() {
             if (!isEditor || allCurrentScheduleItems.length === 0) {
                 console.warn("Nenhum item na escala para arquivar ou sem permissão.");
@@ -775,9 +811,9 @@
                     schedule: allCurrentScheduleItems.map(({ id, ...rest }) => rest)
                 };
 
-                // 2. Salva como um único documento na coleção de Arquivos
+                // 2. Salva como um único documento na coleção de Arquivos, usando setDoc para SOBRESCREVER
                 const docRef = doc(db, getArchiveCollectionPath(), archiveId);
-                await setDoc(docRef, archiveData);
+                await setDoc(docRef, archiveData); // setDoc sobrepõe automaticamente se o ID existir
                 
                 // 3. Feedback visual
                 saveButton.textContent = 'Escala Arquivada!';
@@ -790,7 +826,7 @@
                     saveStatus.classList.add('hidden');
                 }, 3000); 
                 
-                console.log(`Escala de ${monthName}/${currentYear} arquivada com sucesso.`);
+                console.log(`Escala de ${monthName}/${currentYear} arquivada com sucesso (Sobrescreveu se existente).`);
             } catch (error) {
                 console.error("Erro ao arquivar a escala:", error);
                 saveButton.textContent = 'Erro ao Salvar!';
@@ -831,6 +867,7 @@
                         }
                     }
                     
+                    // Verifica se o usuário logou com Email/Senha (o editor)
                     if (user && user.providerData.some(p => p.providerId === 'password')) {
                          isEditor = true; 
                     }
@@ -1009,7 +1046,7 @@
                 return;
             }
             if (docId === 'null') {
-                console.warn("Item não salvo no Firestore. Por favor, use o botão 'Adicionar' ou 'Editar' para salvar o item primeiro.");
+                console.warn("Item não salvo no Firestore. Por favor, use o botão 'Editar' na linha para salvar o item primeiro.");
                 // Força o recarregamento para reverter o valor no campo
                 loadSchedule(); 
                 return;
@@ -1052,9 +1089,19 @@
             if (isArchived) {
                 return `<span class="px-2 py-1 bg-gray-100 rounded text-gray-800 text-sm">${currentValue || 'À DEFINIR'}</span>`;
             }
-
-            // Se não arquivado (escala atual), retorna o SELECT
-            return `
+            
+            // Tooltip apenas se não for editor
+            const tooltip = !isEditor ? `
+                <div class="tooltip-container">
+                    <select 
+                        class="inline-select opacity-75 bg-gray-100 cursor-default"
+                        disabled
+                    >
+                        ${options}
+                    </select>
+                    <span class="tooltip-text">Faça login para editar.</span>
+                </div>
+            ` : `
                 <select 
                     class="inline-select ${isDisabled ? 'opacity-75 bg-gray-100 cursor-default' : ''}"
                     onchange="updateFieldInline('${docId}', '${fieldName}', this.value)"
@@ -1063,6 +1110,8 @@
                     ${options}
                 </select>
             `;
+
+            return tooltip;
         }
 
         function getRowClass(culto, index) {
@@ -1153,10 +1202,13 @@
 
 
                     groupRow.innerHTML = `
-                        <td colspan="7" class="week-divider px-4 py-2 border-t border-b border-indigo-200 flex justify-between items-center">
-                            <span>${isArchived ? item.title || blockName : blockName}</span>
-                            <div class="flex items-center">
-                                ${blockActions}
+                        <td colspan="7" class="week-divider px-4 py-2 border-t border-b border-indigo-200">
+                            <div class="flex justify-between items-center w-full">
+                                <div class="w-1/3"></div> <!-- Placeholder para empurrar o título -->
+                                <span class="flex-grow text-center">${isArchived ? item.title || blockName : blockName}</span>
+                                <div class="flex items-center w-1/3 justify-end">
+                                    ${blockActions}
+                                </div>
                             </div>
                         </td>
                     `;
@@ -1194,10 +1246,10 @@
                         </button>`;
                     } else {
                         // Para placeholders, o botão de adicionar está no bloco, não na linha.
-                        actionButtons = `<span class="text-gray-400">À Definir</span>`;
+                        actionButtons = `<span class="text-gray-400"></span>`;
                     }
                 } else {
-                    actionButtons = `<span class="text-gray-400">Visualizar</span>`;
+                    actionButtons = `<span class="text-gray-400"></span>`; // Remove o texto "Visualizar"
                 }
                 
                 const cultoTextColorClass = 'text-indigo-700';
@@ -1231,7 +1283,7 @@
             }
             const modal = document.getElementById('entry-modal');
             const title = document.getElementById('modal-title');
-            const saveButton = document.getElementById('save-button');
+            const saveButton = document.getElementById('save-item-button');
             
             document.getElementById('entry-id').value = docId === 'null' ? '' : docId;
             document.getElementById('date-input').value = date;
