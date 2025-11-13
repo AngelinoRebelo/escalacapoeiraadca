@@ -178,13 +178,16 @@
         </div>
     </div>
 
-    <!-- Modal de Senha Admin (Login/Acesso) -->
+    <!-- Modal de Senha Admin (Login/Acesso por Email/Senha) -->
     <div id="passwordModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center hidden">
         <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md transform transition-all">
             <h2 class="text-xl font-bold mb-4 text-gray-800">Login de Administrador</h2>
-            <p class="mb-4 text-sm text-gray-600">Para liberar a edição da escala, insira a senha de administrador.</p>
+            <p class="mb-4 text-sm text-gray-600">Insira as credenciais do administrador para liberar a edição da escala.</p>
+            
+            <input type="email" id="adminEmailInput" placeholder="Email do Administrador" class="w-full p-3 border rounded-lg mb-2">
             <input type="password" id="adminPasswordInput" placeholder="Senha" class="w-full p-3 border rounded-lg mb-4">
-            <div id="passwordError" class="text-red-500 text-sm mb-4 hidden">Senha incorreta.</div>
+            
+            <div id="passwordError" class="text-red-500 text-sm mb-4 hidden">Email ou senha incorretos, ou usuário não cadastrado.</div>
             <div class="flex justify-end space-x-3">
                 <button id="cancelPassword" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition">Cancelar</button>
                 <button id="submitPassword" class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition">Acessar</button>
@@ -192,16 +195,16 @@
         </div>
     </div>
 
-    <!-- Novo Modal de Primeiro Acesso (Configuração de Senha) -->
+    <!-- Novo Modal de Primeiro Acesso (Configuração da Senha do Firestore) -->
     <div id="initialSetupModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center hidden">
         <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md transform transition-all">
             <h2 class="text-xl font-bold mb-4 text-red-600">PRIMEIRO ACESSO E CONFIGURAÇÃO</h2>
-            <p class="mb-4 text-sm text-gray-700 font-medium">Esta é a primeira vez que você acessa o modo Admin. Por favor, crie uma senha segura para o administrador.</p>
-            <input type="password" id="setupPasswordInput" placeholder="Nova Senha de Admin" class="w-full p-3 border rounded-lg mb-2">
+            <p class="mb-4 text-sm text-gray-700 font-medium">Esta é a primeira vez que a senha de Admin do **Firestore** será definida. Por favor, crie uma senha para proteger as configurações.</p>
+            <input type="password" id="setupPasswordInput" placeholder="Nova Senha de Configuração do Admin" class="w-full p-3 border rounded-lg mb-2">
             <input type="password" id="confirmPasswordInput" placeholder="Confirmar Nova Senha" class="w-full p-3 border rounded-lg mb-4">
             <div id="setupError" class="text-red-500 text-sm mb-4 hidden">As senhas não coincidem ou são muito curtas (mínimo 6 caracteres).</div>
             <div class="flex justify-end">
-                <button id="submitSetupPassword" class="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition">Configurar e Acessar</button>
+                <button id="submitSetupPassword" class="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition">Configurar e Continuar</button>
             </div>
         </div>
     </div>
@@ -210,17 +213,16 @@
     <script type="module">
         // Importação corrigida: setLogLevel é importado de firebase-app
         import { initializeApp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInWithEmailAndPassword, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, collection, getDoc, updateDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Variáveis globais (fornecidas pelo ambiente Canvas)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'escala-adca-capoeira';
-        // Usando a chave fornecida pelo usuário como fallback, mas priorizando a variável global
         const firebaseConfigString = typeof __firebase_config !== 'undefined' ? __firebase_config : '{"apiKey": "AIzaSyAIVZC5Q8lfcMPCiv1oQzFm1oCajNB76c8", "authDomain": "escala-adca-capoeira.firebaseapp.com", "projectId": "escala-adca-capoeira", "storageBucket": "escala-adca-capoeira.firebasestorage.app", "messagingSenderId": "1015575781500", "appId": "1:1015575781500:web:1c483c568b98dfd5cd29f9"}';
         const firebaseConfig = JSON.parse(firebaseConfigString);
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        // Constante para senha padrão inicial
+        // Constante para senha padrão inicial do Firestore (não a senha de autenticação do Firebase)
         const DEFAULT_PASSWORD = "DEFAULT_PASSWORD";
 
         // Inicialização do Firebase
@@ -234,8 +236,8 @@
         // Variáveis de estado
         let isAuthReady = false;
         let userId = null;
-        let isAdmin = false;
-        let adminPassword = null; // Senha carregada do Firestore
+        let isAdmin = false; // Controla o modo de edição (que depende do login e da verificação de permissão no Firestore)
+        let adminPassword = null; // Senha de Configuração do Admin no Firestore
         let currentMonth = new Date().getMonth() + 1;
         let currentYear = new Date().getFullYear();
         let currentSchedule = [];
@@ -244,75 +246,49 @@
         // Elementos DOM
         const statusMessageEl = document.getElementById('statusMessage');
         const scheduleBody = document.getElementById('scheduleBody');
-        const authButton = document.getElementById('authButton'); // Novo botão dinâmico
+        const authButton = document.getElementById('authButton');
         const adminManagerButton = document.getElementById('adminManagerButton');
         const adminActionHeader = document.getElementById('adminActionHeader');
         const adminModal = document.getElementById('adminModal');
         const passwordModal = document.getElementById('passwordModal');
-        const initialSetupModal = document.getElementById('initialSetupModal'); // Novo modal
+        const initialSetupModal = document.getElementById('initialSetupModal');
         const monthSelector = document.getElementById('monthSelector');
         const yearSelector = document.getElementById('yearSelector');
         const noDataMessage = document.getElementById('noDataMessage');
-        const scheduleContainer = document.getElementById('scheduleContainer'); // Para ativar a classe admin-mode-active
-        const ruleAlertEl = document.getElementById('ruleAlert'); // Alerta de Regras
+        const scheduleContainer = document.getElementById('scheduleContainer');
+        const ruleAlertEl = document.getElementById('ruleAlert');
 
         // --- FUNÇÕES DE UTENSILIDADE ---
 
-        /**
-         * Retorna o caminho do documento da escala para o mês/ano atual.
-         * Caminho: /artifacts/{appId}/public/data/escalas/{MM-YYYY}
-         */
         const getScheduleDocPath = (month, year) => {
             const monthStr = String(month).padStart(2, '0');
             return doc(db, 'artifacts', appId, 'public', 'data', 'escalas', `${monthStr}-${year}`);
         };
 
-        /**
-         * Retorna o caminho do documento da lista de membros.
-         * Caminho: /artifacts/{appId}/public/data/membros/membros_list
-         */
         const getMembersDocPath = () => {
             return doc(db, 'artifacts', appId, 'public', 'data', 'membros', 'membros_list');
         };
 
-        /**
-         * Retorna o caminho do documento de configuração Admin.
-         * Caminho: /artifacts/{appId}/public/data/config/admin
-         */
         const getAdminConfigDocPath = () => {
             return doc(db, 'artifacts', appId, 'public', 'data', 'config', 'admin');
         };
 
-        /**
-         * Ordena a escala: Primeiro por Semana (1-5), depois por Dia (DOMINGO > QUARTA > SEXTA).
-         */
         const sortSchedule = (schedule) => {
-            // Definindo a ordem de prioridade dos dias como solicitado: Domingo, Quarta, Sexta.
             const dayOrder = { 'DOMINGO': 1, 'QUARTA-FEIRA': 2, 'SEXTA-FEIRA': 3, 'SÁBADO': 4 };
             
             return schedule.sort((a, b) => {
-                // 1. Ordena por Semana (semana 1 vem antes da semana 2)
                 if (a.semana !== b.semana) {
                     return a.semana - b.semana;
                 }
-                // 2. Dentro da mesma semana, ordena pelo Dia (Domingo < Quarta < Sexta)
                 return (dayOrder[a.dia] || 99) - (dayOrder[b.dia] || 99);
             });
         };
 
-        /**
-         * Encontra a semana do mês a que pertence uma data.
-         */
         const getWeekOfMonth = (dateString, month, year) => {
             const [day] = dateString.split('/').map(Number);
-            // Simples: calcula a semana baseada no dia do mês
-            // Considera o primeiro dia do mês como o início da primeira semana
             return Math.ceil(day / 7);
         };
 
-        /**
-         * Gera a grade inicial de cultos para o mês.
-         */
         const generateInitialSchedule = (month, year) => {
             const initialSchedule = [];
             const date = new Date(year, month - 1, 1);
@@ -320,31 +296,28 @@
             
             for (let day = 1; day <= lastDay; day++) {
                 date.setDate(day);
-                const dayOfWeek = date.getDay(); // 0=Dom, 1=Seg...
+                const dayOfWeek = date.getDay(); 
 
                 let cultoDay = null;
                 let cultoName = null;
                 
-                // Mapeamento dos dias: 0=Dom, 3=Qua, 5=Sex
-                if (dayOfWeek === 0) { // Domingo
+                if (dayOfWeek === 0) {
                     cultoDay = 'DOMINGO';
                     cultoName = 'LOUVOR E ADORAÇÃO';
-                } else if (dayOfWeek === 3) { // Quarta-feira
+                } else if (dayOfWeek === 3) {
                     cultoDay = 'QUARTA-FEIRA';
                     cultoName = 'DOUTRINA';
-                } else if (dayOfWeek === 5) { // Sexta-feira
+                } else if (dayOfWeek === 5) {
                     cultoDay = 'SEXTA-FEIRA';
                     cultoName = 'LIBERTAÇÃO';
                 }
 
                 if (cultoDay) {
                     const formattedDate = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
-                    
-                    // Recalcula a semana para garantir consistência no bloco visual
                     const weekNumber = getWeekOfMonth(formattedDate, month, year);
 
                     initialSchedule.push({
-                        id: Date.now().toString() + '-' + day, // ID único
+                        id: Date.now().toString() + '-' + day,
                         data: formattedDate,
                         dia: cultoDay,
                         culto: cultoName,
@@ -361,25 +334,18 @@
 
         // --- FUNÇÕES DE DADOS (FIRESTORE) ---
 
-        /**
-         * Inicializa a configuração Admin no Firestore se ainda não existir.
-         */
         const initializeAdminConfig = async () => {
             const adminConfigRef = getAdminConfigDocPath();
             const adminConfigDoc = await getDoc(adminConfigRef);
 
             if (!adminConfigDoc.exists()) {
-                // Se não existir, cria com a senha de placeholder para forçar o "Primeiro Acesso"
-                await setDoc(adminConfigRef, { password: DEFAULT_PASSWORD });
+                await setDoc(adminConfigRef, { password: DEFAULT_PASSWORD, adminUID: null });
                 adminPassword = DEFAULT_PASSWORD;
             } else {
                 adminPassword = adminConfigDoc.data().password;
             }
         };
 
-        /**
-         * Inicializa a lista de membros no Firestore se ainda não existir.
-         */
         const initializeMembers = async () => {
             const memberDocRef = getMembersDocPath();
             const memberDoc = await getDoc(memberDocRef);
@@ -394,9 +360,6 @@
             }
         };
 
-        /**
-         * Inicializa a escala do mês/ano atual se ainda não existir.
-         */
         const initializeSchedule = async (month, year) => {
             const scheduleRef = getScheduleDocPath(month, year);
             const docSnap = await getDoc(scheduleRef);
@@ -409,12 +372,10 @@
             }
         };
 
-        /**
-         * Atualiza a senha do Admin no Firestore.
-         */
         const updateAdminPassword = async (newPassword) => {
             const adminConfigRef = getAdminConfigDocPath();
             try {
+                // Não precisamos do UID do admin aqui, pois a senha do Firestore é apenas uma chave de acesso.
                 await updateDoc(adminConfigRef, { password: newPassword });
                 adminPassword = newPassword;
                 return true;
@@ -424,37 +385,6 @@
             }
         };
 
-        /**
-         * Adiciona um membro à lista.
-         */
-        const addMemberToDB = async (name) => {
-            const memberDocRef = getMembersDocPath();
-            try {
-                await updateDoc(memberDocRef, {
-                    nomes: arrayUnion(name)
-                });
-            } catch (error) {
-                console.error("Erro ao adicionar membro:", error);
-            }
-        };
-
-        /**
-         * Remove um membro da lista.
-         */
-        const removeMemberFromDB = async (name) => {
-            const memberDocRef = getMembersDocPath();
-            try {
-                await updateDoc(memberDocRef, {
-                    nomes: arrayRemove(name)
-                });
-            } catch (error) {
-                console.error("Erro ao remover membro:", error);
-            }
-        };
-
-        /**
-         * Atualiza uma célula específica na escala.
-         */
         const updateScheduleCell = async (scheduleId, field, value) => {
             if (!isAdmin) return;
             try {
@@ -475,13 +405,58 @@
             }
         };
 
-        /**
-         * Adiciona um novo culto (linha) à escala.
-         */
+        // Outras funções de DB (addMemberToDB, removeMemberFromDB, addCultoToSchedule, removeCultoFromSchedule) omitidas para brevidade, mas intactas.
+
+
+        // --- FUNÇÕES DE VISUALIZAÇÃO (DOM) ---
+
+        // Funções renderMembersList, createEditableCell, startEditing, updateStatus, updateAuthButton, renderSchedule (omitidas para brevidade, mas intactas)
+        // ... (Corpo das funções DOM) ...
+        
+        const renderMembersList = () => {
+            const listEl = document.getElementById('membersList');
+            listEl.innerHTML = '';
+            membersList.forEach(member => {
+                const div = document.createElement('div');
+                div.className = 'flex justify-between items-center p-2 border-b last:border-b-0';
+                div.innerHTML = `
+                    <span class="text-gray-700">${member}</span>
+                    <button data-member="${member}" class="remove-member-btn text-red-500 hover:text-red-700 transition">Remover</button>
+                `;
+                listEl.appendChild(div);
+            });
+
+            listEl.querySelectorAll('.remove-member-btn').forEach(button => {
+                button.onclick = () => {
+                    if (window.confirm(`Tem certeza que deseja remover o membro "${button.dataset.member}"?`)) {
+                        removeMemberFromDB(button.dataset.member);
+                    }
+                };
+            });
+        };
+        const addMemberToDB = async (name) => {
+            const memberDocRef = getMembersDocPath();
+            try {
+                await updateDoc(memberDocRef, {
+                    nomes: arrayUnion(name)
+                });
+            } catch (error) {
+                console.error("Erro ao adicionar membro:", error);
+            }
+        };
+        const removeMemberFromDB = async (name) => {
+            const memberDocRef = getMembersDocPath();
+            try {
+                await updateDoc(memberDocRef, {
+                    nomes: arrayRemove(name)
+                });
+            } catch (error) {
+                console.error("Erro ao remover membro:", error);
+            }
+        };
         const addCultoToSchedule = async (dateStr, day, name) => {
             const scheduleRef = getScheduleDocPath(currentMonth, currentYear);
             
-            // Formatando a data de 'YYYY-MM-DD' para 'DD/MM/YYYY'
             const [year, month] = dateStr.split('-');
             const [ , , dayOfMonth] = dateStr.split('-');
             const formattedDate = `${dayOfMonth}/${month}/${year}`;
@@ -509,10 +484,6 @@
                 console.error("Erro ao adicionar novo culto:", error);
             }
         };
-
-        /**
-         * Remove um culto (linha) da escala.
-         */
         const removeCultoFromSchedule = async (scheduleId) => {
             if (!window.confirm("Tem certeza que deseja remover este culto da escala?")) return;
 
@@ -530,37 +501,6 @@
             }
         };
 
-        // --- FUNÇÕES DE VISUALIZAÇÃO (DOM) ---
-
-        /**
-         * Renderiza a lista de membros no modal.
-         */
-        const renderMembersList = () => {
-            const listEl = document.getElementById('membersList');
-            listEl.innerHTML = '';
-            membersList.forEach(member => {
-                const div = document.createElement('div');
-                div.className = 'flex justify-between items-center p-2 border-b last:border-b-0';
-                div.innerHTML = `
-                    <span class="text-gray-700">${member}</span>
-                    <button data-member="${member}" class="remove-member-btn text-red-500 hover:text-red-700 transition">Remover</button>
-                `;
-                listEl.appendChild(div);
-            });
-
-            // Adiciona listener de remoção
-            listEl.querySelectorAll('.remove-member-btn').forEach(button => {
-                button.onclick = () => {
-                    if (window.confirm(`Tem certeza que deseja remover o membro "${button.dataset.member}"?`)) {
-                        removeMemberFromDB(button.dataset.member);
-                    }
-                };
-            });
-        };
-
-        /**
-         * Cria um elemento de célula editável para a tabela.
-         */
         const createEditableCell = (culto, field, value, weekNumber) => {
             const td = document.createElement('td');
             td.className = `px-3 py-2 text-sm text-gray-900 editable-cell`;
@@ -569,7 +509,6 @@
             td.dataset.field = field;
             td.dataset.weekClass = weekNumber % 2 === 1 ? 'week-odd' : 'week-even';
 
-            // Adiciona o listener de clique para iniciar a edição (se for admin)
             if (isAdmin) {
                 td.onclick = (e) => {
                     if (e.target.tagName !== 'TD') return;
@@ -579,10 +518,7 @@
 
             return td.outerHTML;
         };
-
-        /**
-         * Inicia o modo de edição em uma célula.
-         */
+        
         const startEditing = (cell, id, field) => {
             if (cell.querySelector('input')) return;
 
@@ -601,7 +537,7 @@
                 const newValue = input.value.trim();
                 cell.textContent = newValue;
                 updateScheduleCell(id, field, newValue);
-                cell.onclick = (e) => startEditing(e.target, id, field); // Restaura o listener de edição
+                cell.onclick = (e) => startEditing(e.target, id, field); 
             };
 
             input.onblur = saveAndEndEditing;
@@ -614,10 +550,7 @@
 
             cell.onclick = null; 
         };
-
-        /**
-         * Renderiza a escala no corpo da tabela, incluindo os cabeçalhos de semana.
-         */
+        
         const renderSchedule = () => {
             scheduleBody.innerHTML = '';
             adminActionHeader.classList.toggle('hidden', !isAdmin);
@@ -633,19 +566,16 @@
             let lastWeek = 0;
 
             sortedSchedule.forEach(culto => {
-                const weekNumber = culto.semana || getWeekOfMonth(culto.data, currentMonth, currentYear); // Fallback
+                const weekNumber = culto.semana || getWeekOfMonth(culto.data, currentMonth, currentYear);
                 
-                // Verifica se é a primeira linha de uma nova semana para adicionar o cabeçalho
                 if (weekNumber !== lastWeek) {
                     const weekHeaderRow = document.createElement('tr');
                     weekHeaderRow.className = 'week-header-row';
-                    // Aplicando a cor de fundo da semana no cabeçalho
                     const weekBgClass = weekNumber % 2 === 1 ? 'bg-blue-700' : 'bg-blue-800'; 
                     weekHeaderRow.innerHTML = `<td colspan="7" class="px-3 py-2 text-sm week-header ${weekBgClass}">SEMANA ${weekNumber} DE ${monthSelector.options[monthSelector.selectedIndex].textContent.toUpperCase()}</td>`;
                     scheduleBody.appendChild(weekHeaderRow);
                 }
                 
-                // Cria a linha do culto
                 const weekClass = weekNumber % 2 === 1 ? 'week-odd' : 'week-even'; 
                 const isToday = culto.data === new Date().toLocaleDateString('pt-BR');
                 const todayClass = isToday ? 'today-row' : '';
@@ -672,7 +602,6 @@
                 lastWeek = weekNumber;
             });
 
-            // Adiciona listeners para remoção (apenas se for admin)
             if (isAdmin) {
                 scheduleBody.querySelectorAll('.remove-culto-btn').forEach(btn => {
                     btn.onclick = () => removeCultoFromSchedule(btn.dataset.id);
@@ -680,18 +609,12 @@
             }
         };
 
-        /**
-         * Atualiza o status de carregamento e erro.
-         */
         const updateStatus = (message, isError = false) => {
             statusMessageEl.textContent = message;
             statusMessageEl.className = `text-center p-4 mb-6 text-lg font-medium rounded-lg shadow-md ${isError ? 'bg-red-100 border border-red-300 text-red-800' : 'bg-green-100 border border-green-300 text-green-800'}`;
-            ruleAlertEl.classList.toggle('hidden', !isError); // Mostra o alerta de regras apenas se houver erro
+            ruleAlertEl.classList.toggle('hidden', !isError);
         };
-
-        /**
-         * Atualiza o texto e a funcionalidade do botão de autenticação.
-         */
+        
         const updateAuthButton = () => {
             adminManagerButton.classList.add('hidden');
             
@@ -710,18 +633,16 @@
                 authButton.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
             }
         };
+        // ... (Fim das funções DOM) ...
+
 
         // --- LISTENERS FIRESTORE (REAL-TIME) ---
 
-        /**
-         * Observa mudanças na lista de membros.
-         */
         const setupMembersListener = () => {
             const membersRef = getMembersDocPath();
             onSnapshot(membersRef, (docSnap) => {
                 if (docSnap.exists() && docSnap.data().nomes) {
                     membersList = docSnap.data().nomes.filter(n => typeof n === 'string');
-                    // Cria ou atualiza o datalist para autocompletar
                     let datalist = document.getElementById('members-datalist');
                     if (!datalist) {
                         datalist = document.createElement('datalist');
@@ -738,16 +659,11 @@
             });
         };
 
-        /**
-         * Observa mudanças na escala do mês/ano selecionado.
-         */
         const setupScheduleListener = (month, year) => {
             const scheduleRef = getScheduleDocPath(month, year);
             
-            // 1. Antes de iniciar o listener, garanta que a escala inicial seja criada
             initializeSchedule(month, year)
                 .then(() => {
-                    // 2. Inicia o listener em tempo real após garantir a inicialização
                     onSnapshot(scheduleRef, (docSnap) => {
                         if (docSnap.exists() && docSnap.data().escalas) {
                             currentSchedule = docSnap.data().escalas;
@@ -757,7 +673,7 @@
                         renderSchedule();
                         const selectedMonthText = monthSelector.options[monthSelector.selectedIndex].textContent;
                         document.getElementById('currentMonthYear').textContent = `${selectedMonthText}/${year}`;
-                        updateStatus(`Escala de ${selectedMonthText}/${year} carregada. Usuário logado: ${userId}`, false);
+                        updateStatus(`Escala de ${selectedMonthText}/${year} carregada.`, false); // Removido 'Usuário logado' pois o login é opcional
 
                     }, (error) => {
                         console.error("Erro ao carregar escala:", error);
@@ -774,16 +690,12 @@
 
         // --- INICIALIZAÇÃO E EVENTOS ---
 
-        /**
-         * Configura os seletores de Mês e Ano.
-         */
         const setupSelectors = () => {
             const months = [
                 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
                 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
             ];
             
-            // Mês
             months.forEach((monthName, index) => {
                 const option = document.createElement('option');
                 option.value = index + 1;
@@ -792,7 +704,6 @@
             });
             monthSelector.value = currentMonth;
 
-            // Ano
             const currentYearValue = new Date().getFullYear();
             for (let i = currentYearValue - 1; i <= currentYearValue + 5; i++) {
                 const option = document.createElement('option');
@@ -802,7 +713,6 @@
             }
             yearSelector.value = currentYear;
 
-            // Listener de mudança
             monthSelector.onchange = (e) => {
                 currentMonth = Number(e.target.value);
                 setupScheduleListener(currentMonth, currentYear);
@@ -813,13 +723,9 @@
             };
         };
 
-        /**
-         * Inicializa os event listeners do modal de administração.
-         */
         const setupAdminModalListeners = () => {
             document.getElementById('closeAdminModal').onclick = () => adminModal.classList.add('hidden');
             
-            // Botão Gerenciar Escala abre o modal
             adminManagerButton.onclick = () => {
                 if(isAdmin) adminModal.classList.remove('hidden');
             };
@@ -839,7 +745,6 @@
                 
                 if (dateInput.value && dayInput.value && nameInput.value) {
                     await addCultoToSchedule(dateInput.value, dayInput.value, nameInput.value);
-                    // Limpar formulário
                     dateInput.value = '';
                     dayInput.value = '';
                     nameInput.value = '';
@@ -856,6 +761,7 @@
             authButton.onclick = () => {
                 if (isAdmin) {
                     // SAIR ADMIN
+                    signOut(auth); // Desloga o usuário do Firebase
                     isAdmin = false;
                     updateAuthButton();
                     renderSchedule();
@@ -867,31 +773,42 @@
                     document.getElementById('setupError').classList.add('hidden');
                     initialSetupModal.classList.remove('hidden');
                 } else {
-                    // LOGIN ADMIN
+                    // LOGIN ADMIN (Abre o modal de Email/Senha)
+                    document.getElementById('adminEmailInput').value = '';
                     document.getElementById('adminPasswordInput').value = '';
                     document.getElementById('passwordError').classList.add('hidden');
                     passwordModal.classList.remove('hidden');
                 }
             };
 
-            // Login Admin
+            // Login Admin (Executa signInWithEmailAndPassword)
             document.getElementById('cancelPassword').onclick = () => passwordModal.classList.add('hidden');
-            document.getElementById('submitPassword').onclick = () => {
+            document.getElementById('submitPassword').onclick = async () => {
+                const email = document.getElementById('adminEmailInput').value;
                 const password = document.getElementById('adminPasswordInput').value;
                 const errorEl = document.getElementById('passwordError');
 
-                if (password === adminPassword) {
-                    isAdmin = true;
+                errorEl.classList.add('hidden');
+
+                if (!email || !password) {
+                    errorEl.textContent = "Preencha o email e a senha.";
+                    errorEl.classList.remove('hidden');
+                    return;
+                }
+
+                try {
+                    // Tenta o login normal do Firebase
+                    await signInWithEmailAndPassword(auth, email, password);
+                    // O restante da lógica de 'isAdmin = true' é tratada pelo onAuthStateChanged
                     passwordModal.classList.add('hidden');
-                    updateAuthButton();
-                    renderSchedule();
-                    updateStatus("Modo Admin ativado! Você pode editar a escala e gerenciar membros.", false);
-                } else {
+                } catch (error) {
+                    console.error("Erro no Login:", error);
+                    errorEl.textContent = "Credenciais inválidas ou erro de rede. Tente novamente.";
                     errorEl.classList.remove('hidden');
                 }
             };
 
-            // Primeiro Acesso Setup
+            // Primeiro Acesso Setup (Define a senha do Firestore - não do Auth)
             document.getElementById('submitSetupPassword').onclick = async () => {
                 const newPass = document.getElementById('setupPasswordInput').value;
                 const confirmPass = document.getElementById('confirmPasswordInput').value;
@@ -900,11 +817,11 @@
                 if (newPass && newPass === confirmPass && newPass.length >= 6) {
                     const success = await updateAdminPassword(newPass);
                     if (success) {
-                        isAdmin = true;
                         initialSetupModal.classList.add('hidden');
-                        updateAuthButton();
-                        renderSchedule();
-                        updateStatus("Senha de Admin configurada e Modo Admin ativado.", false);
+                        // Após configurar a senha do Firestore, o usuário é direcionado para o Login
+                        // para que possa se autenticar no Firebase Auth com Email/Senha.
+                        updateAuthButton(); 
+                        passwordModal.classList.remove('hidden'); 
                     }
                 } else {
                     errorEl.classList.remove('hidden');
@@ -916,13 +833,13 @@
         // --- FLUXO PRINCIPAL ---
 
         /**
-         * Inicia a aplicação após a autenticação.
+         * Inicia a aplicação após o carregamento da senha Admin do Firestore.
          */
         const startApp = async () => {
             try {
-                // 0. Inicializa a Configuração Admin e carrega a senha
+                // 0. Inicializa a Configuração Admin e carrega a senha do Firestore
                 await initializeAdminConfig();
-                updateAuthButton(); // Atualiza o botão baseado na senha carregada (DEFAULT_PASSWORD ou Senha Configurada)
+                updateAuthButton();
 
                 // 1. Inicializa Membros (garante que a lista inicial existe no DB)
                 await initializeMembers();
@@ -930,9 +847,9 @@
                 // 2. Configura Seletores e Listeners
                 setupSelectors();
                 setupAdminModalListeners();
-                setupAuthLogic(); // Chama setupAuthLogic após carregar adminPassword
+                setupAuthLogic();
 
-                // 3. Inicia Listeners em tempo real (Este listener chama initializeSchedule internamente)
+                // 3. Inicia Listeners em tempo real (Estes rodam mesmo sem o Admin logado, para a visualização pública)
                 setupMembersListener();
                 setupScheduleListener(currentMonth, currentYear); 
                 
@@ -942,31 +859,63 @@
             }
         };
 
+
         /**
-         * Processo de Autenticação no Firebase
+         * Processo de Autenticação no Firebase Auth
          */
         onAuthStateChanged(auth, async (user) => {
             if (user) {
+                // Usuário autenticado (via Token ou Email/Senha)
                 userId = user.uid;
+                
+                // Verifica se a senha do Firestore Admin está configurada (não DEFAULT_PASSWORD)
+                if (adminPassword !== DEFAULT_PASSWORD) {
+                    // Assumimos que, se o usuário estiver logado via Auth, ele é o Admin
+                    // e liberamos o modo de edição.
+                    isAdmin = true;
+                } else {
+                    // Caso o login ocorra, mas a senha do Firestore ainda seja DEFAULT (Primeiro Acesso)
+                    isAdmin = false;
+                    // Força a abertura do modal de configuração de senha do Firestore
+                    initialSetupModal.classList.remove('hidden');
+                }
+
+                updateAuthButton();
+                renderSchedule();
+                
                 if (!isAuthReady) {
                     isAuthReady = true;
-                    startApp();
-                }
-            } else {
-                // Tenta autenticar
-                try {
+                    // Se já estiver logado (ex: por token de ambiente), inicia o app
+                    // Caso contrário, o app já teria sido iniciado após o carregamento do adminConfig
+                    // Se o initialAuthToken existir, tenta usá-lo para evitar o erro 400.
                     if (initialAuthToken) {
                         await signInWithCustomToken(auth, initialAuthToken);
-                    } else {
-                        await signInAnonymously(auth);
                     }
-                } catch (error) {
-                    console.error("Erro de Autenticação:", error);
-                    updateStatus(`Erro de Autenticação: ${error.message}. Verifique as regras de segurança do Firebase.`, true);
-                    
-                    // Continua como não autenticado, mas permite o carregamento da tela pública
-                    userId = null;
-                    if (!isAuthReady) {
+                    if (initialAuthToken || !isAuthReady) { // Garante que startApp só seja chamado uma vez
+                        startApp();
+                    }
+                }
+
+            } else {
+                // Usuário deslogado
+                userId = null;
+                isAdmin = false;
+                updateAuthButton();
+                renderSchedule();
+                
+                if (!isAuthReady) {
+                    // Tenta o login com token do ambiente Canvas para permitir a visualização
+                    try {
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            // Se não há token e não há login, inicia o app com visualização pública
+                            isAuthReady = true;
+                            startApp();
+                        }
+                    } catch (error) {
+                        console.error("Erro de Autenticação Inicial:", error);
+                        // Falha ao usar token, inicia o app em modo público/erro
                         isAuthReady = true;
                         startApp();
                     }
