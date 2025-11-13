@@ -75,6 +75,20 @@
             cursor: pointer;
         }
         
+        /* Estilo para o botão Salvar Escala (Novo) */
+        #save-button {
+            background-color: #10B981; /* Green-500 */
+            color: white;
+            padding: 8px 16px;
+            font-weight: 600;
+            border-radius: 0.5rem;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+        #save-button:hover {
+            background-color: #059669; /* Green-600 */
+            transform: scale(1.02);
+        }
+
         /* Estilo para o botão/ícone sutil de adição */
         #subtle-add-btn {
             background-color: #6366F1; /* Indigo-500 */
@@ -122,10 +136,14 @@
                 <p id="auth-status" class="text-sm text-gray-600">Carregando autenticação...</p>
             </div>
             <div class="flex items-center space-x-4">
-                <!-- Botão de Logar/Sair -->
-                <button id="auth-button" class="logged-out" onclick="handleAuthClick()">
-                    Logar para Editar
+                <!-- Status de Salvamento (Novo) -->
+                <span id="save-status" class="text-sm font-semibold text-green-600 hidden">Salvo!</span>
+
+                <!-- Botão de Salvar Escala (Novo) -->
+                <button id="save-button" onclick="saveAllChanges()" class="hidden">
+                    Salvar Escala
                 </button>
+                
                 <!-- Ícone sutil para Adicionar Item (Apenas visível se logado) -->
                 <button id="subtle-add-btn" onclick="openModal()" title="Adicionar Novo Item na Escala (Data, Dia, Culto)" class="hidden">
                     <!-- Ícone Plus (Lucide-react SVG inline) -->
@@ -133,6 +151,11 @@
                         <path d="M5 12h14"/>
                         <path d="M12 5v14"/>
                     </svg>
+                </button>
+
+                <!-- Botão de Logar/Sair -->
+                <button id="auth-button" class="logged-out" onclick="handleAuthClick()">
+                    Logar para Editar
                 </button>
             </div>
         </header>
@@ -197,15 +220,14 @@
                 <p id="login-error" class="text-sm text-red-600 hidden">Credenciais inválidas. Tente novamente.</p>
                 <div>
                     <label for="login-email" class="block text-sm font-medium text-gray-700">Email</label>
-                    <input type="email" id="login-email" required placeholder="editor@escala.com"
+                    <input type="email" id="login-email" required placeholder="Seu Email"
                            class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2.5 focus:border-indigo-500 focus:ring-indigo-500">
                 </div>
                 
                 <div>
                     <label for="login-password" class="block text-sm font-medium text-gray-700">Senha</label>
-                    <input type="password" id="login-password" required placeholder="senhasecreta123"
+                    <input type="password" id="login-password" required placeholder="Sua Senha"
                            class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2.5 focus:border-indigo-500 focus:ring-indigo-500">
-                    <p class="text-xs text-gray-500 mt-1">Email: editor@escala.com, Senha: senhasecreta123</p>
                 </div>
 
                 <div class="flex justify-between pt-4">
@@ -309,7 +331,7 @@
     <!-- Imports do Firebase -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, collection, query, onSnapshot, setDoc, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Variáveis globais 
@@ -328,10 +350,6 @@
             "OB. ANA ROCHA", "IR. GABRIEL", "IR. VITÓRIA", "DCa. CRISTIANE"
         ].sort(); 
         
-        // --- CREDENCIAIS DE EDITOR (APENAS PARA DEMONSTRAÇÃO) ---
-        const EDITOR_EMAIL = "editor@escala.com";
-        const EDITOR_PASSWORD = "senhasecreta123";
-
         // Define a configuração do Firebase
         const FIREBASE_CONFIG_OBJ = {
             apiKey: "AIzaSyAIVZC5Q8lfcMPCiv1oQzFm1oCajNB76c8",
@@ -422,7 +440,7 @@
 
 
         /**
-         * Gera entradas de placeholder para todas as semanas do mês selecionado.
+         * Gera entradas de placeholder para todas as semanas do mês seleccionado.
          */
         const generatePlaceholderItems = (month, year) => {
             const targetMonth = month - 1; // 0-indexado
@@ -498,25 +516,28 @@
             return placeholderItems;
         };
         
-        // --- FUNÇÕES DE AUTENTICAÇÃO ---
+        // --- FUNÇÕES DE AUTENTICAÇÃO E UI DE EDITOR ---
 
         function updateAuthUI() {
             const authButton = document.getElementById('auth-button');
             const subtleAddBtn = document.getElementById('subtle-add-btn');
-
+            const saveButton = document.getElementById('save-button');
+            
             if (isEditor) {
                 // Usuário logado como editor
                 authButton.textContent = 'Sair';
                 authButton.classList.remove('logged-out');
                 authButton.classList.add('logged-in');
                 subtleAddBtn.classList.remove('hidden'); // Mostra o botão de adicionar
-                document.getElementById('auth-status').textContent = `Editor logado: ${auth.currentUser.email || 'Anônimo Editor'}`;
+                saveButton.classList.remove('hidden'); // Mostra o botão de salvar
+                document.getElementById('auth-status').textContent = `Editor logado: ${auth.currentUser.email}`;
             } else {
                 // Usuário não logado como editor
                 authButton.textContent = 'Logar para Editar';
                 authButton.classList.remove('logged-in');
                 authButton.classList.add('logged-out');
                 subtleAddBtn.classList.add('hidden'); // Esconde o botão de adicionar
+                saveButton.classList.add('hidden'); // Esconde o botão de salvar
                 document.getElementById('auth-status').textContent = `Modo visualização. Faça login para editar.`;
             }
             // Chama renderTable para re-habilitar/desabilitar os SELECTs e botões de acordo com o novo estado de login
@@ -542,10 +563,7 @@
                 // Se estiver logado, faz logout e reinicia o estado
                 try {
                     await signOut(auth);
-                    // O signOut fará com que onAuthStateChanged assine anonimamente novamente.
-                    // Resetamos o estado local de editor e forçamos a atualização da UI imediatamente.
-                    isEditor = false;
-                    updateAuthUI();
+                    // O onAuthStateChanged tratará do resto
                 } catch (error) {
                     console.error("Erro ao fazer logout:", error);
                 }
@@ -555,7 +573,7 @@
             }
         }
         
-        // FUNÇÃO DE LOGIN MODIFICADA PARA VERIFICAÇÃO CLIENTE-SIDE (PARA EVITAR O ERRO 'auth/operation-not-allowed')
+        // FUNÇÃO DE LOGIN MODIFICADA PARA USAR AUTENTICAÇÃO REAL DO FIREBASE
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('login-email').value;
@@ -564,23 +582,57 @@
             
             errorDisplay.classList.add('hidden');
             
-            // VERIFICAÇÃO CLIENTE-SIDE: Checa as credenciais de editor contra as hardcoded
-            if (email === EDITOR_EMAIL && password === EDITOR_PASSWORD) {
+            try {
+                // Tenta logar com as credenciais cadastradas no Firebase
+                await signInWithEmailAndPassword(auth, email, password);
                 
-                // Sucesso: Ativa o modo de editor localmente.
-                // Não é necessário chamar signInWithEmailAndPassword, o que evita o erro.
-                // O usuário já está autenticado anonimamente (Viewer role).
-                isEditor = true;
+                // Se bem-sucedido, o onAuthStateChanged irá definir isEditor = true
                 closeLoginModal();
-                updateAuthUI(); 
                 
-            } else {
-                // Falha na verificação
-                console.error("Erro de login: Credenciais incorretas.");
-                errorDisplay.textContent = "Credenciais inválidas. Tente novamente.";
+            } catch (error) {
+                console.error("Erro de login:", error);
+                // Exibe a mensagem de erro formatada
+                let errorMessage = "Erro ao tentar logar. Verifique o email e senha.";
+                if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+                     errorMessage = "Email ou senha incorretos.";
+                } else if (error.code === 'auth/invalid-email') {
+                     errorMessage = "Formato de email inválido.";
+                } else if (error.code === 'auth/operation-not-allowed') {
+                     // ERRO CORRIGIDO AQUI: Mensagem clara para o usuário sobre a necessidade de ativar o provedor
+                     errorMessage = "A autenticação por Email/Senha não está ativada no seu projeto Firebase. Ative-a no Console do Firebase (Autenticação -> Provedores).";
+                }
+                errorDisplay.textContent = errorMessage;
                 errorDisplay.classList.remove('hidden');
             }
         });
+
+        // --- FUNÇÃO DO NOVO BOTÃO SALVAR ESCALA ---
+        window.saveAllChanges = function() {
+            if (!isEditor) return;
+            
+            const saveButton = document.getElementById('save-button');
+            const saveStatus = document.getElementById('save-status');
+
+            saveButton.textContent = 'Salvando...';
+            saveButton.disabled = true;
+            saveStatus.classList.add('hidden');
+
+            // O Firestore já salva em tempo real (inline e no modal). 
+            // Este timeout é apenas para dar feedback visual de que a ação foi concluída.
+            setTimeout(() => {
+                saveButton.textContent = 'Salvar Escala';
+                saveButton.disabled = false;
+                
+                saveStatus.textContent = 'Salvo!';
+                saveStatus.classList.remove('hidden');
+                
+                setTimeout(() => {
+                    saveStatus.classList.add('hidden');
+                }, 3000); 
+                
+                console.log("Escala salva (Real-time). Botão acionado para confirmação do usuário.");
+            }, 500);
+        }
 
         // --- INICIALIZAÇÃO E OBSERVAÇÃO ---
         async function setupFirebase() {
@@ -596,12 +648,10 @@
 
                 // Listener de estado de autenticação
                 onAuthStateChanged(auth, async (user) => {
-                    // 1. Tenta manter o estado de editor se o usuário for o editor e não estiver deslogando
-                    if (user && user.email === EDITOR_EMAIL) {
-                         isEditor = true; 
-                    } 
+                    // Resetamos o estado do editor
+                    isEditor = false;
                     
-                    // 2. Garante que há um usuário autenticado (anônimo ou token-based)
+                    // 1. Tenta logar anonimamente ou com token inicial (para visualização)
                     if (!user) {
                         if (initialAuthToken) {
                             // Tenta logar com o token fornecido
@@ -618,6 +668,11 @@
                             await signInAnonymously(auth);
                             user = auth.currentUser;
                         }
+                    }
+                    
+                    // 2. Verifica se o usuário logado é um editor (logado com email/senha)
+                    if (user && user.providerData.some(p => p.providerId === 'password')) {
+                         isEditor = true; 
                     }
                     
                     userId = user?.uid || crypto.randomUUID();
@@ -696,14 +751,17 @@
             }
             if (docId === 'null') {
                 console.warn("Item não salvo no Firestore. Por favor, clique em 'Preencher Data' para salvar primeiro.");
+                // O loadSchedule já é chamado via onSnapshot (se a tentativa de save falhar), mas para o editor,
+                // que espera que o valor fique, a única forma de salvar o placeholder é pelo modal.
+                loadSchedule();
                 return;
             }
 
             const docRef = doc(db, getCollectionPath(), docId);
             const updateData = {
                 [field]: value,
-                // Usa o email do editor hardcoded ou o email do usuário logado se for o editor
-                lastModifiedBy: isEditor ? (auth.currentUser?.email || EDITOR_EMAIL) : 'Visualizador',
+                // Usa o email do usuário logado para o rastreio
+                lastModifiedBy: auth.currentUser?.email || 'Editor (Email/Senha)',
                 timestamp: new Date().getTime() 
             };
 
@@ -928,7 +986,7 @@
                 direcao: direcao,
                 preletor: preletor,
                 timestamp: new Date().getTime(), 
-                lastModifiedBy: isEditor ? (auth.currentUser?.email || EDITOR_EMAIL) : 'Visualizador',
+                lastModifiedBy: auth.currentUser?.email || 'Editor (Email/Senha)',
             };
             
             closeModal(); 
