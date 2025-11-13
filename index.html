@@ -14,44 +14,36 @@
             background-color: #f7f7f7;
         }
         /* Estilos personalizados para a tabela */
-        /* COR NEUTRA: Tonalidade escura para o cabeçalho de seção (o novo cabeçalho repetido) */
         .table-header {
             background-color: #374151; /* Dark Gray/Indigo */
             color: white;
             font-weight: 600;
         }
-        /* COR NEUTRA: Cor de Fundo do Divisor de Semana */
         .week-divider {
             background-color: #F0F4FF; /* Very Light Blue/Indigo */
             font-weight: 700;
             color: #1E40AF; /* Dark Blue for contrast */
             text-align: center;
         }
-        /* Estilo para a célula de culto (serviço) */
         .culto-cell {
             font-weight: 500;
             text-transform: uppercase;
         }
         
         /* CORES DE FUNDO ALTERNADAS E ESPECIAIS (NEUTRAS) */
-        /* Linha com fundo branco/off-white */
         .culto-color-light-grey {
             background-color: #F9FAFB; 
         }
-        /* Linha com fundo azul muito claro e neutro */
         .culto-color-light-blue {
             background-color: #F0F9FF;
         }
-        /* Destaque para CULTO DE MISSÕES (Tonalidade de índigo suave) */
         .culto-missoes {
             background-color: #E0E7FF; /* Indigo-200 */
         }
-        /* Garante que o texto dentro da linha escura fique escuro */
         .culto-missoes td {
             color: #1F2937 !important; 
         }
         
-        /* Remove o cabeçalho fixo original */
         #main-table-header {
             display: none;
         }
@@ -124,13 +116,29 @@
             background-color: #DC2626; /* Red-600 */
         }
         
+        /* Estilo das abas */
+        .tab-button {
+            padding: 8px 16px;
+            border-bottom: 3px solid transparent;
+            font-weight: 600;
+            cursor: pointer;
+            transition: border-color 0.2s, color 0.2s;
+        }
+        .tab-button.active {
+            border-bottom-color: #6366F1; /* Indigo-500 */
+            color: #111827; /* Gray-900 */
+        }
+        .tab-button:not(.active):hover {
+            border-bottom-color: #D1D5DB;
+        }
+        
     </style>
 </head>
 <body class="p-4 md:p-8">
 
     <div class="max-w-7xl mx-auto">
         <!-- Título Principal e Botão de Login/Logout -->
-        <header class="mb-8 flex justify-between items-center">
+        <header class="mb-4 flex justify-between items-center">
             <div>
                 <h1 class="text-4xl font-extrabold text-gray-900 mb-2">Escala dos Cultos</h1>
                 <p id="auth-status" class="text-sm text-gray-600">Carregando autenticação...</p>
@@ -140,7 +148,7 @@
                 <span id="save-status" class="text-sm font-semibold text-green-600 hidden">Salvo!</span>
 
                 <!-- Botão de Salvar Escala (Novo) -->
-                <button id="save-button" onclick="saveAllChanges()" class="hidden">
+                <button id="save-button" onclick="archiveScale()" class="hidden">
                     Salvar Escala
                 </button>
                 
@@ -160,48 +168,73 @@
             </div>
         </header>
 
-        <!-- Controles, Filtros -->
-        <div class="flex justify-start items-center mb-6 space-x-3">
-            <!-- Seletor de Mês -->
-            <select id="month-filter" class="p-2 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500"></select>
-            <!-- Seletor de Ano -->
-            <select id="year-filter" class="p-2 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500"></select>
+        <!-- Navegação por Abas -->
+        <div class="flex border-b border-gray-300 mb-6">
+            <button id="current-tab" class="tab-button active" onclick="switchView('current')">
+                Escala Atual
+            </button>
+            <button id="saved-tab" class="tab-button" onclick="switchView('saved')">
+                Escalas Salvas
+            </button>
         </div>
 
-        <!-- Tabela de Escala (Responsiva) -->
-        <div class="bg-white rounded-xl shadow-2xl overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <!-- Cabeçalho Vazio (Mantido para a estrutura da tabela, mas invisível) -->
-                    <thead id="main-table-header">
-                        <tr>
-                            <th class="px-4 py-3 text-left text-xs uppercase tracking-wider rounded-tl-xl">Data</th>
-                            <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Dia</th>
-                            <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Culto</th>
-                            <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Portaria</th>
-                            <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Direção</th>
-                            <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Preletor</th>
-                            <th class="px-4 py-3 text-center text-xs uppercase tracking-wider rounded-tr-xl">Ações</th>
-                        </tr>
-                    </thead>
-                    <!-- Corpo da Tabela (Preenchido via JavaScript) -->
-                    <tbody id="schedule-body" class="bg-white divide-y divide-gray-100">
-                        <!-- Linhas da escala serão injetadas aqui -->
-                        <tr>
-                            <td colspan="7" class="py-12 text-center text-gray-500">
-                                <span class="animate-pulse">Carregando escala em tempo real...</span>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+        <!-- Conteúdo da Aba: ESCALA ATUAL (Edição) -->
+        <div id="current-view">
+            <!-- Controles, Filtros -->
+            <div class="flex justify-start items-center mb-6 space-x-3">
+                <!-- Seletor de Mês -->
+                <select id="month-filter" class="p-2 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500"></select>
+                <!-- Seletor de Ano -->
+                <select id="year-filter" class="p-2 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500"></select>
             </div>
-            
-            <div id="no-data-message" class="hidden p-6 text-center text-gray-500">
-                Nenhum item na escala. Logue como Editor para adicionar novas datas.
+
+            <!-- Tabela de Escala (Responsiva) -->
+            <div class="bg-white rounded-xl shadow-2xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead id="main-table-header">
+                            <!-- Cabeçalho Vazio (Mantido para a estrutura da tabela, mas invisível) -->
+                        </thead>
+                        <!-- Corpo da Tabela (Preenchido via JavaScript) -->
+                        <tbody id="schedule-body" class="bg-white divide-y divide-gray-100">
+                            <tr>
+                                <td colspan="7" class="py-12 text-center text-gray-500">
+                                    <span class="animate-pulse">Carregando escala em tempo real...</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div id="no-data-message" class="hidden p-6 text-center text-gray-500">
+                    Nenhum item na escala para o mês selecionado. Logue como Editor para gerar ou adicionar novas datas.
+                </div>
             </div>
         </div>
         
-        <!-- Informações do Usuário/App (Apenas para debug em desenvolvimento, mas necessário para Firestore) -->
+        <!-- Conteúdo da Aba: ESCALAS SALVAS (Visualização) -->
+        <div id="saved-view" class="hidden">
+            <div class="bg-white rounded-xl shadow-2xl p-6">
+                <h2 class="text-2xl font-bold mb-4 text-gray-900">Versões Arquivadas</h2>
+                <div id="archive-list" class="space-y-3">
+                    <p class="text-gray-500">Carregando lista de escalas salvas...</p>
+                </div>
+
+                <!-- Área de Visualização da Escala Salva -->
+                <div id="archived-scale-display" class="mt-8 hidden">
+                    <h3 id="archived-scale-title" class="text-xl font-bold mb-4 border-b pb-2 text-indigo-700"></h3>
+                    <div class="overflow-x-auto">
+                         <table class="min-w-full divide-y divide-gray-200">
+                            <tbody id="archived-schedule-body" class="bg-white divide-y divide-gray-100">
+                                <!-- Conteúdo da escala salva será injetado aqui -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Informações do Usuário/App -->
         <footer class="mt-8 text-xs text-gray-500 p-4 bg-gray-100 rounded-lg">
             <p><strong>App ID:</strong> <span id="display-app-id"></span></p>
             <p><strong>User ID:</strong> <span id="display-user-id"></span></p>
@@ -218,6 +251,11 @@
             
             <form id="login-form" class="p-6 space-y-4">
                 <p id="login-error" class="text-sm text-red-600 hidden">Credenciais inválidas. Tente novamente.</p>
+                <div class="text-sm text-gray-600 bg-yellow-50 p-2 rounded-lg border border-yellow-200">
+                    <p>Use o email e senha **cadastrados no seu Firebase**.</p>
+                    <p class="mt-1">A autenticação por Email/Senha deve estar ativa no seu projeto.</p>
+                </div>
+
                 <div>
                     <label for="login-email" class="block text-sm font-medium text-gray-700">Email</label>
                     <input type="email" id="login-email" required placeholder="Seu Email"
@@ -332,15 +370,16 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, collection, query, onSnapshot, setDoc, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, collection, query, onSnapshot, setDoc, addDoc, deleteDoc, getDocs, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Variáveis globais 
         let app, db, auth;
         let userId = '';
         let isEditor = false; // Controla a permissão de edição
-        // Variáveis de filtro
+        let currentView = 'current'; // 'current' ou 'saved'
         let currentMonth = new Date().getMonth() + 1; // 1-12
         let currentYear = new Date().getFullYear();
+        let allCurrentScheduleItems = []; // Armazena todos os itens da escala atual para arquivamento
         
         // --- LISTA DE NOMES PREDEFINIDOS ---
         const PREDEFINED_NAMES = [
@@ -366,8 +405,9 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-escala-app';
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
-        // URL da coleção pública (Obrigatório usar esta estrutura)
-        const getCollectionPath = () => `/artifacts/${appId}/public/data/escala`;
+        // URL das coleções
+        const getCurrentCollectionPath = () => `/artifacts/${appId}/public/data/escala`;
+        const getArchiveCollectionPath = () => `/artifacts/${appId}/public/data/escalas_salvas`;
         
         // Array de meses em português (1-indexado)
         const MONTH_NAMES = [
@@ -429,11 +469,15 @@
             // Event Listeners
             monthSelect.onchange = (e) => {
                 currentMonth = parseInt(e.target.value, 10);
+                // Reseta a visualização para a escala atual ao mudar o filtro
+                switchView('current'); 
                 loadSchedule(); 
             };
 
             yearSelect.onchange = (e) => {
                 currentYear = parseInt(e.target.value, 10);
+                // Reseta a visualização para a escala atual ao mudar o filtro
+                switchView('current'); 
                 loadSchedule(); 
             };
         }
@@ -447,24 +491,21 @@
             const targetYear = year;
             
             let currentDate = new Date(targetYear, targetMonth, 1); 
-            // Avança para o primeiro Domingo do mês (ou antes, se o mês começar no meio da semana)
-            currentDate.setDate(currentDate.getDate() + (0 - currentDate.getDay() + 7) % 7); 
             
-            const daysInBlock = [0, 3, 5]; // Domingo, Quarta, Sexta
-            const cultosInBlock = ["LOUVOR E ADORAÇÃO", "DOUTRINA", "LIBERTAÇÃO"];
-            const placeholderItems = [];
-
-            // Adiciona a lógica para garantir que começamos no primeiro domingo do mês ou antes
+            // Avança para o primeiro Domingo do mês (ou antes, se o mês começar no meio da semana)
             let firstDayOfMonth = new Date(targetYear, targetMonth, 1);
             let dayOffset = (0 - firstDayOfMonth.getDay() + 7) % 7; 
             let firstSunday = new Date(targetYear, targetMonth, 1 + dayOffset);
 
             currentDate = firstSunday; // Começa a iteração no primeiro Domingo relevante
 
+            const daysInBlock = [0, 3, 5]; // Domingo, Quarta, Sexta
+            const cultosInBlock = ["LOUVOR E ADORAÇÃO", "DOUTRINA", "LIBERTAÇÃO"];
+            const placeholderItems = [];
+
             // Itera pelas semanas
             let maxIterations = 6; 
             for(let week = 0; week < maxIterations; week++) {
-                let foundItemInMonth = false;
                 let blockItems = [];
                 
                 // Itera pelos 3 cultos na semana (D, Q, S)
@@ -477,21 +518,19 @@
                         continue;
                     }
                     
-                    foundItemInMonth = true;
-                    
                     const dayString = DAY_NAMES[blockDate.getDay()];
                     let cultoString = cultosInBlock[i];
                     
                     // Aplica destaques específicos apenas para o visual, se necessário
                     const currentBlockIndex = Math.floor(placeholderItems.length / 3);
-                    if (currentBlockIndex === 1 && i === 0) { 
+                    if (currentBlockIndex === 1 && i === 0 && dayString === 'DOMINGO') { 
                         cultoString = "SANTA CEIA";
-                    } else if (currentBlockIndex === 2 && i === 1) { 
+                    } else if (currentBlockIndex === 2 && i === 1 && dayString === 'QUARTA-FEIRA') { 
                         cultoString = "CULTO DE MISSÕES";
                     }
 
                     blockItems.push({
-                        id: null, 
+                        id: 'null', // Use string 'null' para placeholders
                         date: `${String(blockDate.getDate()).padStart(2, '0')}/${String(blockDate.getMonth() + 1).padStart(2, '0')}/${blockDate.getFullYear()}`,
                         day: dayString,
                         culto: cultoString,
@@ -541,7 +580,9 @@
                 document.getElementById('auth-status').textContent = `Modo visualização. Faça login para editar.`;
             }
             // Chama renderTable para re-habilitar/desabilitar os SELECTs e botões de acordo com o novo estado de login
-            loadSchedule();
+            if (currentView === 'current') {
+                loadSchedule();
+            }
         }
         
         window.openLoginModal = function() {
@@ -573,7 +614,7 @@
             }
         }
         
-        // FUNÇÃO DE LOGIN MODIFICADA PARA USAR AUTENTICAÇÃO REAL DO FIREBASE
+        // FUNÇÃO DE LOGIN PARA USAR AUTENTICAÇÃO REAL DO FIREBASE
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('login-email').value;
@@ -583,7 +624,6 @@
             errorDisplay.classList.add('hidden');
             
             try {
-                // Tenta logar com as credenciais cadastradas no Firebase
                 await signInWithEmailAndPassword(auth, email, password);
                 
                 // Se bem-sucedido, o onAuthStateChanged irá definir isEditor = true
@@ -591,48 +631,71 @@
                 
             } catch (error) {
                 console.error("Erro de login:", error);
-                // Exibe a mensagem de erro formatada
                 let errorMessage = "Erro ao tentar logar. Verifique o email e senha.";
                 if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
                      errorMessage = "Email ou senha incorretos.";
                 } else if (error.code === 'auth/invalid-email') {
                      errorMessage = "Formato de email inválido.";
                 } else if (error.code === 'auth/operation-not-allowed') {
-                     // ERRO CORRIGIDO AQUI: Mensagem clara para o usuário sobre a necessidade de ativar o provedor
-                     errorMessage = "A autenticação por Email/Senha não está ativada no seu projeto Firebase. Ative-a no Console do Firebase (Autenticação -> Provedores).";
+                     errorMessage = "A autenticação por Email/Senha não está ativada no seu projeto Firebase.";
                 }
                 errorDisplay.textContent = errorMessage;
                 errorDisplay.classList.remove('hidden');
             }
         });
 
-        // --- FUNÇÃO DO NOVO BOTÃO SALVAR ESCALA ---
-        window.saveAllChanges = function() {
-            if (!isEditor) return;
+        // --- FUNÇÃO DO NOVO BOTÃO SALVAR ESCALA (ARQUIVAMENTO) ---
+        window.archiveScale = async function() {
+            if (!isEditor || allCurrentScheduleItems.length === 0) {
+                console.warn("Nenhum item na escala para arquivar ou sem permissão.");
+                return;
+            }
             
+            const archiveId = `${String(currentMonth).padStart(2, '0')}-${currentYear}`;
+            const monthName = MONTH_NAMES[currentMonth - 1];
             const saveButton = document.getElementById('save-button');
             const saveStatus = document.getElementById('save-status');
 
-            saveButton.textContent = 'Salvando...';
+            saveButton.textContent = 'Arquivando...';
             saveButton.disabled = true;
             saveStatus.classList.add('hidden');
 
-            // O Firestore já salva em tempo real (inline e no modal). 
-            // Este timeout é apenas para dar feedback visual de que a ação foi concluída.
-            setTimeout(() => {
-                saveButton.textContent = 'Salvar Escala';
-                saveButton.disabled = false;
+            try {
+                // 1. Prepara os dados para arquivamento
+                const archiveData = {
+                    month: currentMonth,
+                    year: currentYear,
+                    title: `Escala de ${monthName} de ${currentYear}`,
+                    archivedAt: new Date().toISOString(),
+                    archivedBy: auth.currentUser?.email || 'Editor (Email/Senha)',
+                    // Salva a lista de itens do mês/ano filtrado
+                    schedule: allCurrentScheduleItems.map(({ id, ...rest }) => rest)
+                };
+
+                // 2. Salva como um único documento na coleção de Arquivos
+                const docRef = doc(db, getArchiveCollectionPath(), archiveId);
+                await setDoc(docRef, archiveData);
                 
-                saveStatus.textContent = 'Salvo!';
+                // 3. Feedback visual
+                saveButton.textContent = 'Escala Arquivada!';
+                saveStatus.textContent = `Escala de ${monthName} Salva!`;
                 saveStatus.classList.remove('hidden');
-                
+
                 setTimeout(() => {
+                    saveButton.textContent = 'Salvar Escala';
+                    saveButton.disabled = false;
                     saveStatus.classList.add('hidden');
                 }, 3000); 
                 
-                console.log("Escala salva (Real-time). Botão acionado para confirmação do usuário.");
-            }, 500);
+                console.log(`Escala de ${monthName}/${currentYear} arquivada com sucesso.`);
+            } catch (error) {
+                console.error("Erro ao arquivar a escala:", error);
+                saveButton.textContent = 'Erro ao Salvar!';
+                saveButton.disabled = false;
+                alert(`Erro ao salvar a escala: ${error.message}`);
+            }
         }
+
 
         // --- INICIALIZAÇÃO E OBSERVAÇÃO ---
         async function setupFirebase() {
@@ -648,29 +711,23 @@
 
                 // Listener de estado de autenticação
                 onAuthStateChanged(auth, async (user) => {
-                    // Resetamos o estado do editor
                     isEditor = false;
                     
-                    // 1. Tenta logar anonimamente ou com token inicial (para visualização)
                     if (!user) {
                         if (initialAuthToken) {
-                            // Tenta logar com o token fornecido
                             try {
                                 await signInWithCustomToken(auth, initialAuthToken);
                                 user = auth.currentUser;
                             } catch (error) {
-                                console.warn("Falha ao usar token customizado. Tentando login anônimo.", error);
                                 await signInAnonymously(auth);
                                 user = auth.currentUser;
                             }
                         } else {
-                            // Tenta anonimamente
                             await signInAnonymously(auth);
                             user = auth.currentUser;
                         }
                     }
                     
-                    // 2. Verifica se o usuário logado é um editor (logado com email/senha)
                     if (user && user.providerData.some(p => p.providerId === 'password')) {
                          isEditor = true; 
                     }
@@ -679,13 +736,16 @@
                     document.getElementById('display-app-id').textContent = appId;
                     document.getElementById('display-user-id').textContent = userId;
                     
-                    // Atualiza a UI com o estado inicial (visualizador ou editor)
                     updateAuthUI();
                     
-                    // Só inicia a escuta do Firestore após o estado inicial ser definido
                     if (!document.getElementById('month-filter').options.length) {
                         updateFiltersUI();
+                    }
+                    // Garante que a visualização correta seja carregada após a autenticação
+                    if (currentView === 'current') {
                         loadSchedule();
+                    } else {
+                        loadArchiveList();
                     }
                 });
 
@@ -696,10 +756,11 @@
         }
 
         function loadSchedule() {
-            if (!db) return;
-            const scaleRef = collection(db, getCollectionPath());
+            if (!db || currentView !== 'current') return;
+            const scaleRef = collection(db, getCurrentCollectionPath());
             const q = query(scaleRef); 
-
+            
+            // O onSnapshotListener é persistente, mas a função de renderização filtra a cada chamada
             onSnapshot(q, (snapshot) => {
                 let schedule = [];
                 snapshot.forEach(doc => {
@@ -727,10 +788,13 @@
                     return a.timestamp - b.timestamp;
                 });
                 
+                // Salva a lista filtrada no escopo global para o arquivamento
+                allCurrentScheduleItems = schedule;
+
                 // 3. PLACEHOLDERS: Se a lista filtrada estiver vazia, gera placeholders
                 const finalSchedule = schedule.length === 0 ? generatePlaceholderItems(currentMonth, currentYear) : schedule;
 
-                renderTable(finalSchedule, schedule.length === 0);
+                renderTable(finalSchedule, schedule.length === 0, 'schedule-body');
             }, (error) => {
                 console.error("Erro ao receber dados da escala:", error);
                 document.getElementById('schedule-body').innerHTML = `
@@ -739,6 +803,97 @@
                     </td></tr>`;
             });
         }
+        
+        // --- FUNÇÕES DA ABA ESCALAS SALVAS ---
+
+        window.switchView = function(view) {
+            currentView = view;
+            
+            document.getElementById('current-tab').classList.remove('active');
+            document.getElementById('saved-tab').classList.remove('active');
+            document.getElementById('current-view').classList.add('hidden');
+            document.getElementById('saved-view').classList.add('hidden');
+            
+            if (view === 'current') {
+                document.getElementById('current-tab').classList.add('active');
+                document.getElementById('current-view').classList.remove('hidden');
+                loadSchedule(); // Recarrega os dados de edição
+            } else {
+                document.getElementById('saved-tab').classList.add('active');
+                document.getElementById('saved-view').classList.remove('hidden');
+                document.getElementById('archived-scale-display').classList.add('hidden'); // Esconde a visualização ao listar
+                loadArchiveList(); // Carrega a lista de arquivos
+            }
+        }
+
+        function loadArchiveList() {
+            if (!db) return;
+            const archiveRef = collection(db, getArchiveCollectionPath());
+            const q = query(archiveRef); 
+            const archiveListDiv = document.getElementById('archive-list');
+            archiveListDiv.innerHTML = '<p class="text-gray-500">Carregando lista de escalas salvas...</p>';
+
+            onSnapshot(q, (snapshot) => {
+                let archives = [];
+                snapshot.forEach(doc => {
+                    archives.push({ id: doc.id, ...doc.data() });
+                });
+
+                if (archives.length === 0) {
+                    archiveListDiv.innerHTML = '<p class="text-gray-500 font-semibold">Nenhuma escala arquivada ainda.</p>';
+                    return;
+                }
+                
+                // Ordena por ano e mês para a lista (MM-AAAA)
+                archives.sort((a, b) => {
+                    const [monthA, yearA] = a.id.split('-').map(Number);
+                    const [monthB, yearB] = b.id.split('-').map(Number);
+                    if (yearA !== yearB) return yearB - yearA; // Ano decrescente
+                    return monthB - monthA; // Mês decrescente
+                });
+
+                archiveListDiv.innerHTML = archives.map(archive => `
+                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg shadow-sm hover:bg-gray-100 transition duration-150 border border-gray-200">
+                        <span class="text-gray-800 font-medium">${archive.title}</span>
+                        <button onclick="viewArchivedScale('${archive.id}')" class="text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition duration-150">
+                            Ver Escala
+                        </button>
+                    </div>
+                `).join('');
+                
+            }, (error) => {
+                console.error("Erro ao carregar lista de arquivos:", error);
+                archiveListDiv.innerHTML = `<p class="text-red-500">Erro ao carregar arquivos: ${error.message}</p>`;
+            });
+        }
+        
+        window.viewArchivedScale = async function(archiveId) {
+            if (!db) return;
+            const docRef = doc(db, getArchiveCollectionPath(), archiveId);
+
+            try {
+                const snapshot = await getDoc(docRef);
+                if (snapshot.exists()) {
+                    const data = snapshot.data();
+                    const title = data.title;
+                    const schedule = data.schedule || [];
+                    
+                    document.getElementById('archived-scale-title').textContent = `${title} (Arquivado em ${new Date(data.archivedAt).toLocaleDateString()})`;
+                    
+                    // Renderiza a escala arquivada (não-editável)
+                    renderTable(schedule, false, 'archived-schedule-body', true);
+
+                    document.getElementById('archived-scale-display').classList.remove('hidden');
+
+                } else {
+                    alert('Escala arquivada não encontrada.');
+                }
+            } catch (error) {
+                console.error("Erro ao carregar escala arquivada:", error);
+                alert('Erro ao carregar a escala arquivada.');
+            }
+        }
+
 
         /**
          * Envia uma atualização de campo (Portaria, Direção, Preletor) diretamente para o Firestore.
@@ -746,21 +901,18 @@
         window.updateFieldInline = async function (docId, field, value) {
             if (!isEditor) {
                 console.error("Permissão negada. É necessário estar logado como Editor para modificar.");
-                loadSchedule(); // Restaura o estado para o valor do BD
+                // Força o recarregamento para reverter o valor no campo
+                loadSchedule(); 
                 return;
             }
             if (docId === 'null') {
                 console.warn("Item não salvo no Firestore. Por favor, clique em 'Preencher Data' para salvar primeiro.");
-                // Nenhuma ação adicional aqui, a tabela será recarregada via onSnapshot
-                // se for um placeholder, a mudança de valor é local e será perdida,
-                // mas a intenção de manter o campo habilitado é cumprida.
                 return;
             }
 
-            const docRef = doc(db, getCollectionPath(), docId);
+            const docRef = doc(db, getCurrentCollectionPath(), docId);
             const updateData = {
                 [field]: value,
-                // Usa o email do usuário logado para o rastreio
                 lastModifiedBy: auth.currentUser?.email || 'Editor (Email/Senha)',
                 timestamp: new Date().getTime() 
             };
@@ -777,21 +929,26 @@
         /**
          * Cria o elemento SELECT para edição inline.
          */
-        function createNameSelect(docId, fieldName, currentValue) {
-            // Desabilita APENAS se o usuário NÃO for editor.
-            const isDisabled = !isEditor; 
+        function createNameSelect(docId, fieldName, currentValue, isArchived = false) {
+            // Desabilita SE o usuário NÃO for editor OU SE a escala for arquivada
+            const isDisabled = isArchived || !isEditor; 
             
             let options = ``;
             const isADefinirSelected = currentValue === 'À DEFINIR' || !currentValue;
-            // Adiciona a opção "À DEFINIR"
+            
             options += `<option value="À DEFINIR" ${isADefinirSelected ? 'selected' : ''}>À DEFINIR</option>`;
             
-            // Adiciona as opções de nomes predefinidos
             PREDEFINED_NAMES.forEach(name => {
                 const isSelected = name === currentValue ? 'selected' : '';
                 options += `<option value="${name}" ${isSelected}>${name}</option>`;
             });
+            
+            // Se arquivado, retorna apenas o valor estático
+            if (isArchived) {
+                return `<span class="px-2 py-1 bg-gray-100 rounded text-gray-800 text-sm">${currentValue || 'À DEFINIR'}</span>`;
+            }
 
+            // Se não arquivado (escala atual), retorna o SELECT
             return `
                 <select 
                     class="inline-select ${isDisabled ? 'opacity-75 bg-gray-100 cursor-default' : ''}"
@@ -838,15 +995,17 @@
 
 
         // Renderiza a Tabela
-        function renderTable(items, isPlaceholder) {
-            const tbody = document.getElementById('schedule-body');
+        function renderTable(items, isPlaceholder, targetBodyId, isArchived = false) {
+            const tbody = document.getElementById(targetBodyId);
             tbody.innerHTML = '';
             
             if (items.length === 0 && !isPlaceholder) {
                 document.getElementById('no-data-message').classList.remove('hidden');
                 return;
             }
-            document.getElementById('no-data-message').classList.add('hidden');
+            if (targetBodyId === 'schedule-body') {
+                document.getElementById('no-data-message').classList.add('hidden');
+            }
 
             items.forEach((item, index) => {
                 
@@ -856,7 +1015,7 @@
                     const blockName = getBlockName(index);
                     groupRow.innerHTML = `
                         <td colspan="7" class="week-divider px-4 py-2 border-t border-b border-indigo-200">
-                            ${blockName}
+                            ${isArchived ? item.title || blockName : blockName}
                         </td>
                     `;
                     tbody.appendChild(groupRow);
@@ -870,20 +1029,22 @@
                 
                 const currentDocId = item.id || 'null'; // Use 'null' string para placeholders
 
-                // O botão de "Editar Data" e "Excluir" só aparece se o usuário for editor
+                // --- BOTÕES DE AÇÃO ---
                 let actionButtons = '';
-                if (isEditor) {
+                if (isArchived) {
+                    actionButtons = `<span class="text-gray-400">Versão Salva</span>`;
+                } else if (isEditor) {
                     // Botão para editar Data/Dia/Culto (abre modal)
                     const editButtonAction = `openModal('${currentDocId}', '${item.date}', '${item.day}', '${item.culto}', '${item.portaria}', '${item.direcao}', '${item.preletor}')`;
                     
                     actionButtons += `<button onclick="${editButtonAction}"
                                 class="font-semibold focus:outline-none text-indigo-600 hover:text-indigo-900"
                                 title="Editar Data, Dia e Culto">
-                            ${item.id ? 'Editar Data' : 'Preencher Data'}
+                            ${item.id !== 'null' ? 'Editar Data' : 'Preencher Data'}
                         </button>`;
                         
                     // Botão de Excluir (só para itens JÁ SALVOS)
-                    if (item.id) {
+                    if (item.id !== 'null') {
                         actionButtons += `<button onclick="showConfirmModal('${item.id}')"
                                 class="font-semibold focus:outline-none text-red-600 hover:text-red-900 ml-2"
                                 title="Excluir item da escala">
@@ -896,18 +1057,18 @@
                 
                 const cultoTextColorClass = 'text-indigo-700';
                 
-                const portariaSelect = createNameSelect(currentDocId, 'portaria', item.portaria);
-                const direcaoSelect = createNameSelect(currentDocId, 'direcao', item.direcao);
-                const preletorSelect = createNameSelect(currentDocId, 'preletor', item.preletor);
+                const portariaContent = createNameSelect(currentDocId, 'portaria', item.portaria, isArchived);
+                const direcaoContent = createNameSelect(currentDocId, 'direcao', item.direcao, isArchived);
+                const preletorContent = createNameSelect(currentDocId, 'preletor', item.preletor, isArchived);
 
                 row.innerHTML = `
                     <td class="px-4 py-3 whitespace-nowrap text-sm font-medium ${textColorClass}">${item.date}</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm ${textColorClass}">${item.day}</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm culto-cell font-bold ${cultoTextColorClass}">${item.culto}</td>
                     
-                    <td class="px-4 py-2 whitespace-nowrap text-sm">${portariaSelect}</td>
-                    <td class="px-4 py-2 whitespace-nowrap text-sm">${direcaoSelect}</td>
-                    <td class="px-4 py-2 whitespace-nowrap text-sm">${preletorSelect}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm">${portariaContent}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm">${direcaoContent}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm">${preletorContent}</td>
                     
                     <td class="px-4 py-3 whitespace-nowrap text-center text-sm font-medium space-x-2">
                         ${actionButtons}
@@ -927,7 +1088,7 @@
             const title = document.getElementById('modal-title');
             const saveButton = document.getElementById('save-button');
             
-            document.getElementById('entry-id').value = docId === 'null' ? '' : docId; // Limpa se for placeholder
+            document.getElementById('entry-id').value = docId === 'null' ? '' : docId;
             document.getElementById('date-input').value = date;
             document.getElementById('day-input').value = day;
             document.getElementById('culto-input').value = culto;
@@ -936,7 +1097,7 @@
             document.getElementById('direcao-input').value = direcao;
             document.getElementById('preletor-input').value = preletor;
 
-            if (docId !== 'null') {
+            if (docId !== 'null' && docId !== '') {
                 title.textContent = 'Editar Data/Culto (Nomes: Edição Direta)';
                 saveButton.textContent = 'Atualizar Data/Culto';
             } else {
@@ -969,7 +1130,6 @@
             const day = document.getElementById('day-input').value.trim();
             const culto = document.getElementById('culto-input').value.trim();
             
-            // Pega os nomes da tabela (se estiver editando um item existente no modal, eles podem ter sido atualizados)
             const portaria = document.getElementById('portaria-input').value.trim();
             const direcao = document.getElementById('direcao-input').value.trim();
             const preletor = document.getElementById('preletor-input').value.trim();
@@ -994,11 +1154,11 @@
 
             try {
                 if (docId) {
-                    const docRef = doc(db, getCollectionPath(), docId);
+                    const docRef = doc(db, getCurrentCollectionPath(), docId);
                     await setDoc(docRef, newEntry, { merge: true }); 
                     console.log("Documento atualizado com sucesso:", docId);
                 } else {
-                    await addDoc(collection(db, getCollectionPath()), newEntry);
+                    await addDoc(collection(db, getCurrentCollectionPath()), newEntry);
                     console.log("Novo documento adicionado com sucesso.");
                 }
             } catch (error) {
@@ -1036,7 +1196,7 @@
 
             if (docIdToDelete && db) {
                 try {
-                    await deleteDoc(doc(db, getCollectionPath(), docIdToDelete));
+                    await deleteDoc(doc(db, getCurrentCollectionPath(), docIdToDelete));
                     console.log("Documento excluído com sucesso:", docIdToDelete);
                 } catch (error) {
                     console.error("Erro ao excluir o documento:", error);
