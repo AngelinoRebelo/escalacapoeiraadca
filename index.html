@@ -79,8 +79,15 @@
         <div class="flex items-center space-x-4">
             <select id="monthSelector" class="p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"></select>
             <select id="yearSelector" class="p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"></select>
-            <button id="adminButton" class="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition duration-150">
-                Modo Admin
+            
+            <!-- Botão Dinâmico de Admin/Acesso/Saída -->
+            <button id="authButton" class="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition duration-150">
+                Acessando...
+            </button>
+
+            <!-- Botão de Gerenciamento (Visível apenas se isAdmin = true) -->
+            <button id="adminManagerButton" class="px-4 py-2 bg-orange-600 text-white font-semibold rounded-lg shadow-md hover:bg-orange-700 transition duration-150 hidden">
+                Gerenciar Escala
             </button>
         </div>
     </header>
@@ -164,16 +171,30 @@
         </div>
     </div>
 
-    <!-- Modal de Senha Admin (para ativar a edição) -->
+    <!-- Modal de Senha Admin (Login/Acesso) -->
     <div id="passwordModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center hidden">
         <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md transform transition-all">
-            <h2 class="text-xl font-bold mb-4 text-gray-800">Ativar Modo Admin</h2>
-            <p class="mb-4 text-sm text-gray-600">Para liberar a edição da escala e a gestão de membros, insira a senha de administrador.</p>
+            <h2 class="text-xl font-bold mb-4 text-gray-800">Login de Administrador</h2>
+            <p class="mb-4 text-sm text-gray-600">Para liberar a edição da escala, insira a senha de administrador.</p>
             <input type="password" id="adminPasswordInput" placeholder="Senha" class="w-full p-3 border rounded-lg mb-4">
             <div id="passwordError" class="text-red-500 text-sm mb-4 hidden">Senha incorreta.</div>
             <div class="flex justify-end space-x-3">
                 <button id="cancelPassword" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition">Cancelar</button>
-                <button id="submitPassword" class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition">Confirmar</button>
+                <button id="submitPassword" class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition">Acessar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Novo Modal de Primeiro Acesso (Configuração de Senha) -->
+    <div id="initialSetupModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md transform transition-all">
+            <h2 class="text-xl font-bold mb-4 text-red-600">PRIMEIRO ACESSO E CONFIGURAÇÃO</h2>
+            <p class="mb-4 text-sm text-gray-700 font-medium">Esta é a primeira vez que você acessa o modo Admin. Por favor, crie uma senha segura para o administrador.</p>
+            <input type="password" id="setupPasswordInput" placeholder="Nova Senha de Admin" class="w-full p-3 border rounded-lg mb-2">
+            <input type="password" id="confirmPasswordInput" placeholder="Confirmar Nova Senha" class="w-full p-3 border rounded-lg mb-4">
+            <div id="setupError" class="text-red-500 text-sm mb-4 hidden">As senhas não coincidem ou são muito curtas (mínimo 6 caracteres).</div>
+            <div class="flex justify-end">
+                <button id="submitSetupPassword" class="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition">Configurar e Acessar</button>
             </div>
         </div>
     </div>
@@ -182,7 +203,7 @@
     <script type="module">
         // Importação corrigida: setLogLevel é importado de firebase-app
         import { initializeApp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, collection, getDoc, updateDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Variáveis globais (fornecidas pelo ambiente Canvas)
@@ -191,6 +212,9 @@
         const firebaseConfigString = typeof __firebase_config !== 'undefined' ? __firebase_config : '{"apiKey": "AIzaSyAIVZC5Q8lfcMPCiv1oQzFm1oCajNB76c8", "authDomain": "escala-adca-capoeira.firebaseapp.com", "projectId": "escala-adca-capoeira", "storageBucket": "escala-adca-capoeira.firebasestorage.app", "messagingSenderId": "1015575781500", "appId": "1:1015575781500:web:1c483c568b98dfd5cd29f9"}';
         const firebaseConfig = JSON.parse(firebaseConfigString);
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Constante para senha padrão inicial
+        const DEFAULT_PASSWORD = "DEFAULT_PASSWORD";
 
         // Inicialização do Firebase
         const app = initializeApp(firebaseConfig);
@@ -213,10 +237,12 @@
         // Elementos DOM
         const statusMessageEl = document.getElementById('statusMessage');
         const scheduleBody = document.getElementById('scheduleBody');
-        const adminButton = document.getElementById('adminButton');
+        const authButton = document.getElementById('authButton'); // Novo botão dinâmico
+        const adminManagerButton = document.getElementById('adminManagerButton');
         const adminActionHeader = document.getElementById('adminActionHeader');
         const adminModal = document.getElementById('adminModal');
         const passwordModal = document.getElementById('passwordModal');
+        const initialSetupModal = document.getElementById('initialSetupModal'); // Novo modal
         const monthSelector = document.getElementById('monthSelector');
         const yearSelector = document.getElementById('yearSelector');
         const noDataMessage = document.getElementById('noDataMessage');
@@ -278,7 +304,6 @@
 
         /**
          * Gera a grade inicial de cultos para o mês.
-         * Cultos fixos: Quarta-Feira (Doutrina), Sexta-Feira (Libertação), Domingo (Louvor e Adoração).
          */
         const generateInitialSchedule = (month, year) => {
             const initialSchedule = [];
@@ -336,10 +361,9 @@
             const adminConfigDoc = await getDoc(adminConfigRef);
 
             if (!adminConfigDoc.exists()) {
-                const initialPassword = "admin123"; // Senha padrão inicial
-                await setDoc(adminConfigRef, { password: initialPassword });
-                adminPassword = initialPassword;
-                // Não logar senha no console em um ambiente de produção real
+                // Se não existir, cria com a senha de placeholder para forçar o "Primeiro Acesso"
+                await setDoc(adminConfigRef, { password: DEFAULT_PASSWORD });
+                adminPassword = DEFAULT_PASSWORD;
             } else {
                 adminPassword = adminConfigDoc.data().password;
             }
@@ -373,11 +397,24 @@
                 const initialSchedule = generateInitialSchedule(month, year);
                 if (initialSchedule.length > 0) {
                     await setDoc(scheduleRef, { escalas: initialSchedule });
-                    // Não precisa logar aqui, o listener fará o trabalho
                 }
             }
         };
 
+        /**
+         * Atualiza a senha do Admin no Firestore.
+         */
+        const updateAdminPassword = async (newPassword) => {
+            const adminConfigRef = getAdminConfigDocPath();
+            try {
+                await updateDoc(adminConfigRef, { password: newPassword });
+                adminPassword = newPassword;
+                return true;
+            } catch (error) {
+                console.error("Erro ao atualizar senha:", error);
+                return false;
+            }
+        };
 
         /**
          * Adiciona um membro à lista.
@@ -425,7 +462,6 @@
                 });
 
                 await setDoc(scheduleRef, { escalas: newSchedule });
-                // O listener de onSnapshot irá redesenhar a tela
             } catch (error) {
                 console.error("Erro ao atualizar célula da escala:", error);
             }
@@ -460,7 +496,6 @@
                     currentEscalas = docSnap.data().escalas;
                 }
                 
-                // Usar setDoc com merge para garantir que a collection é criada se não existir
                 await setDoc(scheduleRef, { escalas: [...currentEscalas, newCulto] }, { merge: true });
             } catch (error) {
                 console.error("Erro ao adicionar novo culto:", error);
@@ -471,7 +506,6 @@
          * Remove um culto (linha) da escala.
          */
         const removeCultoFromSchedule = async (scheduleId) => {
-            // Usando modal customizado para confirmação
             if (!window.confirm("Tem certeza que deseja remover este culto da escala?")) return;
 
             const scheduleRef = getScheduleDocPath(currentMonth, currentYear);
@@ -483,7 +517,6 @@
                 const newSchedule = currentEscalas.filter(culto => culto.id !== scheduleId);
 
                 await setDoc(scheduleRef, { escalas: newSchedule });
-                // O listener de onSnapshot irá redesenhar a tela
             } catch (error) {
                 console.error("Erro ao remover culto:", error);
             }
@@ -510,7 +543,6 @@
             // Adiciona listener de remoção
             listEl.querySelectorAll('.remove-member-btn').forEach(button => {
                 button.onclick = () => {
-                    // Usando modal customizado para confirmação
                     if (window.confirm(`Tem certeza que deseja remover o membro "${button.dataset.member}"?`)) {
                         removeMemberFromDB(button.dataset.member);
                     }
@@ -544,7 +576,6 @@
          * Inicia o modo de edição em uma célula.
          */
         const startEditing = (cell, id, field) => {
-            // Se já estiver editando, não faz nada
             if (cell.querySelector('input')) return;
 
             const currentValue = cell.textContent.trim();
@@ -554,12 +585,10 @@
             input.className = 'input-editor';
             input.setAttribute('list', 'members-datalist');
             
-            // Substitui o conteúdo da célula pelo input
             cell.textContent = '';
             cell.appendChild(input);
             input.focus();
 
-            // Lógica para salvar ao perder o foco (blur) ou pressionar Enter
             const saveAndEndEditing = () => {
                 const newValue = input.value.trim();
                 cell.textContent = newValue;
@@ -575,7 +604,6 @@
                 }
             };
 
-            // Remove o listener de clique temporariamente para evitar loops
             cell.onclick = null; 
         };
 
@@ -650,6 +678,28 @@
         const updateStatus = (message, isError = false) => {
             statusMessageEl.textContent = message;
             statusMessageEl.className = `text-center p-4 mb-6 text-lg font-medium rounded-lg shadow-md ${isError ? 'bg-red-100 border border-red-300 text-red-800' : 'bg-green-100 border border-green-300 text-green-800'}`;
+        };
+
+        /**
+         * Atualiza o texto e a funcionalidade do botão de autenticação.
+         */
+        const updateAuthButton = () => {
+            adminManagerButton.classList.add('hidden');
+            
+            if (isAdmin) {
+                authButton.textContent = "Sair Admin";
+                authButton.classList.remove('bg-indigo-600', 'bg-red-600');
+                authButton.classList.add('bg-gray-600', 'hover:bg-gray-700');
+                adminManagerButton.classList.remove('hidden');
+            } else if (adminPassword === DEFAULT_PASSWORD) {
+                authButton.textContent = "Primeiro Acesso";
+                authButton.classList.remove('bg-indigo-600', 'bg-gray-600');
+                authButton.classList.add('bg-red-600', 'hover:bg-red-700');
+            } else {
+                authButton.textContent = "Login Admin";
+                authButton.classList.remove('bg-red-600', 'bg-gray-600');
+                authButton.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+            }
         };
 
         // --- LISTENERS FIRESTORE (REAL-TIME) ---
@@ -759,6 +809,12 @@
          */
         const setupAdminModalListeners = () => {
             document.getElementById('closeAdminModal').onclick = () => adminModal.classList.add('hidden');
+            
+            // Botão Gerenciar Escala abre o modal
+            adminManagerButton.onclick = () => {
+                if(isAdmin) adminModal.classList.remove('hidden');
+            };
+
             document.getElementById('addMemberButton').onclick = () => {
                 const input = document.getElementById('newMemberName');
                 const name = input.value.trim();
@@ -779,7 +835,6 @@
                     dayInput.value = '';
                     nameInput.value = '';
                 } else {
-                    // Feedback de erro no modal Admin
                     console.error('Por favor, preencha a Data, o Dia e o Nome do Culto.');
                 }
             };
@@ -788,19 +843,29 @@
         /**
          * Lógica de Login/Admin
          */
-        const setupAdminLogic = () => {
-            adminButton.onclick = () => {
+        const setupAuthLogic = () => {
+            authButton.onclick = () => {
                 if (isAdmin) {
-                    // Se já for admin, abre o modal de gerenciamento
-                    adminModal.classList.remove('hidden');
+                    // SAIR ADMIN
+                    isAdmin = false;
+                    updateAuthButton();
+                    renderSchedule();
+                    updateStatus("Modo Admin desativado.", false);
+                } else if (adminPassword === DEFAULT_PASSWORD) {
+                    // PRIMEIRA ACESSO
+                    document.getElementById('setupPasswordInput').value = '';
+                    document.getElementById('confirmPasswordInput').value = '';
+                    document.getElementById('setupError').classList.add('hidden');
+                    initialSetupModal.classList.remove('hidden');
                 } else {
-                    // Se não for admin, abre o modal de senha
+                    // LOGIN ADMIN
                     document.getElementById('adminPasswordInput').value = '';
                     document.getElementById('passwordError').classList.add('hidden');
                     passwordModal.classList.remove('hidden');
                 }
             };
 
+            // Login Admin
             document.getElementById('cancelPassword').onclick = () => passwordModal.classList.add('hidden');
             document.getElementById('submitPassword').onclick = () => {
                 const password = document.getElementById('adminPasswordInput').value;
@@ -809,12 +874,29 @@
                 if (password === adminPassword) {
                     isAdmin = true;
                     passwordModal.classList.add('hidden');
-                    adminButton.textContent = "Gerenciar Escala";
-                    adminButton.classList.add('bg-orange-600', 'hover:bg-orange-700');
-                    adminButton.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+                    updateAuthButton();
+                    renderSchedule();
                     updateStatus("Modo Admin ativado! Você pode editar a escala e gerenciar membros.", false);
-                    renderSchedule(); // Redesenha a tabela com campos editáveis
-                    // Não abre o modal de gerenciamento automaticamente
+                } else {
+                    errorEl.classList.remove('hidden');
+                }
+            };
+
+            // Primeiro Acesso Setup
+            document.getElementById('submitSetupPassword').onclick = async () => {
+                const newPass = document.getElementById('setupPasswordInput').value;
+                const confirmPass = document.getElementById('confirmPasswordInput').value;
+                const errorEl = document.getElementById('setupError');
+
+                if (newPass && newPass === confirmPass && newPass.length >= 6) {
+                    const success = await updateAdminPassword(newPass);
+                    if (success) {
+                        isAdmin = true;
+                        initialSetupModal.classList.add('hidden');
+                        updateAuthButton();
+                        renderSchedule();
+                        updateStatus("Senha de Admin configurada e Modo Admin ativado.", false);
+                    }
                 } else {
                     errorEl.classList.remove('hidden');
                 }
@@ -831,6 +913,7 @@
             try {
                 // 0. Inicializa a Configuração Admin e carrega a senha
                 await initializeAdminConfig();
+                updateAuthButton(); // Atualiza o botão baseado na senha carregada (DEFAULT_PASSWORD ou Senha Configurada)
 
                 // 1. Inicializa Membros (garante que a lista inicial existe no DB)
                 await initializeMembers();
@@ -838,7 +921,7 @@
                 // 2. Configura Seletores e Listeners
                 setupSelectors();
                 setupAdminModalListeners();
-                setupAdminLogic();
+                setupAuthLogic(); // Chama setupAuthLogic após carregar adminPassword
 
                 // 3. Inicia Listeners em tempo real (Este listener chama initializeSchedule internamente)
                 setupMembersListener();
@@ -846,7 +929,6 @@
                 
             } catch (error) {
                 console.error("Erro fatal ao iniciar o aplicativo:", error);
-                // Atualiza o status com a mensagem de erro detalhada
                 updateStatus(`Erro fatal ao iniciar o aplicativo: ${error.message}`, true);
             }
         };
@@ -866,10 +948,8 @@
                 try {
                     if (initialAuthToken) {
                         await signInWithCustomToken(auth, initialAuthToken);
-                        // onAuthStateChanged será chamado novamente com o usuário logado
                     } else {
                         await signInAnonymously(auth);
-                        // onAuthStateChanged será chamado novamente com o usuário anônimo
                     }
                 } catch (error) {
                     console.error("Erro de Autenticação:", error);
