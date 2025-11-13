@@ -72,6 +72,13 @@
 </head>
 <body class="p-4 md:p-8">
 
+    <!-- ALERT BOX SOBRE REGRAS DE SEGURANÇA (Adicionado para resolver o erro de permissão) -->
+    <div id="ruleAlert" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 hidden" role="alert">
+        <p class="font-bold">Atenção: Erro de Permissão do Firebase</p>
+        <p class="text-sm">Se o app não carregar, acesse o painel **Firestore > Rules** do seu projeto Firebase e publique as seguintes regras para permitir o acesso de usuários autenticados (necessário para o Canvas):</p>
+        <pre class="mt-2 p-2 bg-red-200 text-xs rounded"><code>match /artifacts/{appId}/public/data/{document=**} { allow read, write: if request.auth != null; }</code></pre>
+    </div>
+
     <!-- Cabeçalho Principal e Seleção de Mês/Ano -->
     <header class="mb-6 flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-lg shadow-md">
         <h1 class="text-3xl font-bold text-gray-800 mb-4 md:mb-0">ESCALA DE CULTOS</h1>
@@ -247,6 +254,7 @@
         const yearSelector = document.getElementById('yearSelector');
         const noDataMessage = document.getElementById('noDataMessage');
         const scheduleContainer = document.getElementById('scheduleContainer'); // Para ativar a classe admin-mode-active
+        const ruleAlertEl = document.getElementById('ruleAlert'); // Alerta de Regras
 
         // --- FUNÇÕES DE UTENSILIDADE ---
 
@@ -678,6 +686,7 @@
         const updateStatus = (message, isError = false) => {
             statusMessageEl.textContent = message;
             statusMessageEl.className = `text-center p-4 mb-6 text-lg font-medium rounded-lg shadow-md ${isError ? 'bg-red-100 border border-red-300 text-red-800' : 'bg-green-100 border border-green-300 text-green-800'}`;
+            ruleAlertEl.classList.toggle('hidden', !isError); // Mostra o alerta de regras apenas se houver erro
         };
 
         /**
@@ -754,12 +763,12 @@
                         console.error("Erro ao carregar escala:", error);
                         currentSchedule = [];
                         renderSchedule();
-                        updateStatus(`Erro ao carregar escala de ${month}/${year}.`, true);
+                        updateStatus(`Erro ao carregar escala de ${month}/${year}. Verifique as regras de segurança do Firestore.`, true);
                     });
                 })
                 .catch(error => {
                     console.error("Erro ao inicializar a escala:", error);
-                    updateStatus(`Erro fatal ao inicializar a escala para ${month}/${year}.`, true);
+                    updateStatus(`Erro fatal ao inicializar a escala para ${month}/${year}. Verifique as regras de segurança do Firestore.`, true);
                 });
         };
 
@@ -929,7 +938,7 @@
                 
             } catch (error) {
                 console.error("Erro fatal ao iniciar o aplicativo:", error);
-                updateStatus(`Erro fatal ao iniciar o aplicativo: ${error.message}`, true);
+                updateStatus(`Erro fatal ao iniciar o aplicativo: ${error.message}. Verifique as regras de segurança do Firestore.`, true);
             }
         };
 
