@@ -224,24 +224,36 @@
         }
         #print-overlay.open {
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
+            height: 100%;
+            overflow: hidden;
         }
         #print-toolbar {
-            flex-shrink: 0;
+            flex: 0 0 320px;
+            width: 320px;
             background: #fff;
-            border-bottom: 1px solid #d1d5db;
-            padding: 12px 16px;
+            border-left: 1px solid #d1d5db;
+            padding: 16px 18px 20px;
             display: flex;
-            flex-wrap: wrap;
-            gap: 12px 16px;
-            align-items: flex-end;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            flex-direction: column;
+            gap: 14px;
+            align-items: stretch;
+            overflow-y: auto;
+            box-shadow: -2px 0 8px rgba(0,0,0,0.06);
+            order: 2;
+        }
+        .print-toolbar-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .print-toolbar-actions button {
+            flex: 1;
         }
         .print-control {
             display: flex;
             flex-direction: column;
             gap: 4px;
-            min-width: 120px;
+            min-width: 0;
         }
         .print-control label {
             font-size: 11px;
@@ -258,9 +270,10 @@
             padding: 6px 8px;
             font-size: 0.875rem;
             background: #fff;
+            width: 100%;
         }
         .print-control input[type="range"] {
-            width: 160px;
+            width: 100%;
         }
         .print-scale-row {
             display: flex;
@@ -269,6 +282,7 @@
         }
         .print-scale-row input[type="number"] {
             width: 72px;
+            flex: 0 0 72px;
         }
         .print-check {
             display: flex;
@@ -277,7 +291,6 @@
             font-size: 0.875rem;
             color: #111827;
             font-weight: 600;
-            height: 34px;
         }
         #print-preview-stage {
             flex: 1;
@@ -286,6 +299,7 @@
             display: flex;
             justify-content: center;
             align-items: flex-start;
+            order: 1;
         }
         #print-paper {
             background: #fff;
@@ -386,8 +400,24 @@
         .print-hint {
             font-size: 12px;
             color: #6b7280;
-            max-width: 260px;
             line-height: 1.35;
+        }
+
+        @media screen and (max-width: 900px) {
+            #print-overlay.open {
+                flex-direction: column;
+            }
+            #print-toolbar {
+                flex: 0 0 auto;
+                width: 100%;
+                max-height: 46vh;
+                order: 1;
+                border-left: none;
+                border-bottom: 1px solid #d1d5db;
+            }
+            #print-preview-stage {
+                order: 2;
+            }
         }
 
         @media print {
@@ -407,6 +437,7 @@
                 position: static;
                 background: #fff;
                 height: auto;
+                overflow: visible;
             }
             #print-toolbar {
                 display: none !important;
@@ -701,9 +732,16 @@
 
 
     <!-- Overlay de edição da página de impressão -->
-    <div id="print-overlay">
+        <div id="print-overlay">
+        <div id="print-preview-stage">
+            <div id="print-paper">
+                <div id="print-sheet"></div>
+                <div id="print-page-break" title="Fim da primeira página"></div>
+            </div>
+        </div>
         <div id="print-toolbar">
-            <div class="print-control" style="min-width: 220px;">
+            <h2 class="text-lg font-bold text-gray-900">Imprimir escala</h2>
+            <div class="print-control">
                 <label for="print-title-input">Título</label>
                 <input type="text" id="print-title-input" maxlength="80" oninput="applyPrintSettings()">
             </div>
@@ -756,7 +794,7 @@
             </label>
             <p class="print-hint">Ajuste a escala personalizada para caber em uma folha. Na impressão do navegador, deixe a escala em 100%.</p>
             <span id="print-fit-status" class="text-sm font-semibold"></span>
-            <div class="flex items-center gap-2 ml-auto">
+            <div class="print-toolbar-actions">
                 <button type="button" onclick="closePrintPreview()"
                         class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">
                     Voltar
@@ -765,12 +803,6 @@
                         class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-5 rounded-lg">
                     Imprimir
                 </button>
-            </div>
-        </div>
-        <div id="print-preview-stage">
-            <div id="print-paper">
-                <div id="print-sheet"></div>
-                <div id="print-page-break" title="Fim da primeira página"></div>
             </div>
         </div>
     </div>
