@@ -264,13 +264,18 @@
         }
         .print-control select,
         .print-control input[type="number"],
-        .print-control input[type="text"] {
+        .print-control input[type="text"],
+        .print-control textarea {
             border: 1px solid #D1D5DB;
             border-radius: 0.375rem;
             padding: 6px 8px;
             font-size: 0.875rem;
             background: #fff;
             width: 100%;
+        }
+        .print-control textarea {
+            resize: vertical;
+            min-height: 52px;
         }
         .print-control input[type="range"] {
             width: 100%;
@@ -743,7 +748,7 @@
             <h2 class="text-lg font-bold text-gray-900">Imprimir escala</h2>
             <div class="print-control">
                 <label for="print-title-input">Título</label>
-                <input type="text" id="print-title-input" maxlength="80" oninput="applyPrintSettings()">
+                <textarea id="print-title-input" maxlength="80" rows="2" oninput="applyPrintSettings()"></textarea>
             </div>
             <div class="print-control">
                 <label for="print-paper">Tamanho do papel</label>
@@ -1793,7 +1798,7 @@
         function splitPortariaNames(value) {
             const raw = (value || '').trim();
             if (!raw || raw === 'À DEFINIR') {
-                return ['', ''];
+                return ['À DEFINIR', ''];
             }
             const parts = raw.split(/\s*(?:\/|,| e )\s*/i).filter(Boolean);
             return [parts[0] || '', parts[1] || ''];
