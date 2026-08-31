@@ -192,8 +192,248 @@
             color: #EF4444; /* Red-500 */
             background-color: #FEE2E2;
         }
+
+        #print-button {
+            background-color: #1D4ED8;
+            color: white;
+            padding: 8px 16px;
+            font-weight: 600;
+            border-radius: 0.5rem;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+        #print-button:hover,
+        #archived-print-button:hover {
+            background-color: #1E40AF;
+            transform: scale(1.02);
+        }
+        #archived-print-button {
+            background-color: #1D4ED8;
+            color: white;
+            padding: 6px 14px;
+            font-weight: 600;
+            border-radius: 0.5rem;
+        }
+
+        /* --- Impressão: overlay de edição --- */
+        #print-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 80;
+            background: #e8eaed;
+        }
+        #print-overlay.open {
+            display: flex;
+            flex-direction: column;
+        }
+        #print-toolbar {
+            flex-shrink: 0;
+            background: #fff;
+            border-bottom: 1px solid #d1d5db;
+            padding: 12px 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px 16px;
+            align-items: flex-end;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        }
+        .print-control {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 120px;
+        }
+        .print-control label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #374151;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .print-control select,
+        .print-control input[type="number"],
+        .print-control input[type="text"] {
+            border: 1px solid #D1D5DB;
+            border-radius: 0.375rem;
+            padding: 6px 8px;
+            font-size: 0.875rem;
+            background: #fff;
+        }
+        .print-control input[type="range"] {
+            width: 160px;
+        }
+        .print-scale-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .print-scale-row input[type="number"] {
+            width: 72px;
+        }
+        .print-check {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+            color: #111827;
+            font-weight: 600;
+            height: 34px;
+        }
+        #print-preview-stage {
+            flex: 1;
+            overflow: auto;
+            padding: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        #print-paper {
+            background: #fff;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+            transform-origin: top center;
+            position: relative;
+        }
+        #print-sheet {
+            transform-origin: top left;
+            width: 100%;
+        }
+        .print-banner {
+            background: #1e4d9c;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+        }
+        .print-banner h1 {
+            font-size: 1.15em;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            margin: 0;
+            text-transform: uppercase;
+        }
+        .print-logo {
+            width: 42px;
+            height: 42px;
+            flex-shrink: 0;
+        }
+        #print-page-break {
+            position: absolute;
+            left: 0;
+            right: 0;
+            border-top: 2px dashed #dc2626;
+            pointer-events: none;
+            display: none;
+            z-index: 2;
+        }
+        #print-page-break::after {
+            content: "Fim da 1ª página";
+            position: absolute;
+            right: 8px;
+            top: 2px;
+            font-size: 10px;
+            color: #dc2626;
+            font-weight: 700;
+            background: #fff;
+            padding: 0 4px;
+        }
+        .print-month {
+            text-align: center;
+            font-weight: 800;
+            font-size: 1.05em;
+            padding: 8px;
+            letter-spacing: 0.08em;
+            border-bottom: 2px solid #1e4d9c;
+            text-transform: uppercase;
+        }
+        .print-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-size: inherit;
+        }
+        .print-table th,
+        .print-table td {
+            border: 1px solid #1f2937;
+            padding: 5px 6px;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .print-table thead th {
+            background: #1e3a5f;
+            color: #fff;
+            font-size: 0.78em;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        .print-week-row td {
+            background: #d7e2f3;
+            font-weight: 800;
+            color: #1e3a5f;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        .print-culto-doutrina { background: #90caf9; }
+        .print-culto-libertacao { background: #f8bbd0; }
+        .print-culto-louvor { background: #fff59d; }
+        .print-culto-ceia { background: #a5d6a7; }
+        .print-culto-missoes { background: #c5cae9; }
+        .print-culto-default { background: #f3f4f6; }
+        .print-name {
+            font-weight: 700;
+            font-size: 0.92em;
+        }
+        .print-hint {
+            font-size: 12px;
+            color: #6b7280;
+            max-width: 260px;
+            line-height: 1.35;
+        }
+
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 8mm;
+            }
+            body.print-mode {
+                background: #fff !important;
+                padding: 0 !important;
+            }
+            body.print-mode > *:not(#print-overlay) {
+                display: none !important;
+            }
+            body.print-mode #print-overlay {
+                display: block !important;
+                position: static;
+                background: #fff;
+                height: auto;
+            }
+            #print-toolbar {
+                display: none !important;
+            }
+            #print-preview-stage {
+                padding: 0;
+                overflow: visible;
+                display: block;
+            }
+            #print-paper {
+                box-shadow: none;
+                width: 100% !important;
+                min-height: 0 !important;
+            }
+            #print-page-break,
+            #print-fit-status {
+                display: none !important;
+            }
+            #print-sheet,
+            .print-table {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
         
     </style>
+    <style id="print-page-style"></style>
 </head>
 <body class="p-4 md:p-8">
 
@@ -220,6 +460,11 @@
                         <path d="M5 12h14"/>
                         <path d="M12 5v14"/>
                     </svg>
+                </button>
+
+                <!-- Botão de Imprimir -->
+                <button id="print-button" onclick="openPrintPreview()" title="Editar e imprimir a escala">
+                    Imprimir
                 </button>
 
                 <!-- Botão de Logar/Sair -->
@@ -283,7 +528,10 @@
 
                 <!-- Área de Visualização da Escala Salva -->
                 <div id="archived-scale-display" class="mt-8 hidden">
-                    <h3 id="archived-scale-title" class="text-xl font-bold mb-4 border-b pb-2 text-indigo-700"></h3>
+                    <div class="flex justify-between items-center mb-4 border-b pb-2">
+                        <h3 id="archived-scale-title" class="text-xl font-bold text-indigo-700"></h3>
+                        <button id="archived-print-button" onclick="openPrintPreview('archived')">Imprimir</button>
+                    </div>
                     <div class="overflow-x-auto">
                          <table class="min-w-full divide-y divide-gray-200">
                             <tbody id="archived-schedule-body" class="bg-white divide-y divide-gray-100">
@@ -452,6 +700,81 @@
     </div>
 
 
+    <!-- Overlay de edição da página de impressão -->
+    <div id="print-overlay">
+        <div id="print-toolbar">
+            <div class="print-control" style="min-width: 220px;">
+                <label for="print-title-input">Título</label>
+                <input type="text" id="print-title-input" maxlength="80" oninput="applyPrintSettings()">
+            </div>
+            <div class="print-control">
+                <label for="print-paper">Tamanho do papel</label>
+                <select id="print-paper" onchange="applyPrintSettings()">
+                    <option value="A4">A4</option>
+                    <option value="letter">Carta</option>
+                    <option value="legal">Ofício</option>
+                </select>
+            </div>
+            <div class="print-control">
+                <label for="print-scale-mode">Escala</label>
+                <select id="print-scale-mode" onchange="onPrintScaleModeChange()">
+                    <option value="fit">Ajustar à página</option>
+                    <option value="100">100%</option>
+                    <option value="90">90%</option>
+                    <option value="80">80%</option>
+                    <option value="70">70%</option>
+                    <option value="custom" selected>Personalizado</option>
+                </select>
+            </div>
+            <div class="print-control">
+                <label for="print-scale-input">Personalizado (%)</label>
+                <div class="print-scale-row">
+                    <input type="range" id="print-scale-range" min="50" max="130" step="1" value="87" oninput="onPrintCustomScale(this.value)">
+                    <input type="number" id="print-scale-input" min="50" max="130" step="1" value="87" oninput="onPrintCustomScale(this.value)">
+                    <span class="text-sm font-semibold text-gray-700">%</span>
+                </div>
+            </div>
+            <div class="print-control">
+                <label for="print-font-range">Tamanho da fonte</label>
+                <div class="print-scale-row">
+                    <input type="range" id="print-font-range" min="8" max="16" step="1" value="11" oninput="applyPrintSettings()">
+                    <span id="print-font-value" class="text-sm font-semibold text-gray-700">11px</span>
+                </div>
+            </div>
+            <div class="print-control">
+                <label for="print-margin">Margens</label>
+                <select id="print-margin" onchange="applyPrintSettings()">
+                    <option value="8">Padrão (8 mm)</option>
+                    <option value="4">Mínimas (4 mm)</option>
+                    <option value="12">Largas (12 mm)</option>
+                    <option value="16">Extra (16 mm)</option>
+                </select>
+            </div>
+            <label class="print-check">
+                <input type="checkbox" id="print-colors" checked onchange="applyPrintSettings()">
+                Cores de fundo
+            </label>
+            <p class="print-hint">Ajuste a escala personalizada para caber em uma folha. Na impressão do navegador, deixe a escala em 100%.</p>
+            <span id="print-fit-status" class="text-sm font-semibold"></span>
+            <div class="flex items-center gap-2 ml-auto">
+                <button type="button" onclick="closePrintPreview()"
+                        class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">
+                    Voltar
+                </button>
+                <button type="button" onclick="printCurrentSheet()"
+                        class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-5 rounded-lg">
+                    Imprimir
+                </button>
+            </div>
+        </div>
+        <div id="print-preview-stage">
+            <div id="print-paper">
+                <div id="print-sheet"></div>
+                <div id="print-page-break" title="Fim da primeira página"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Imports do Firebase -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -466,6 +789,10 @@
         let currentMonth = new Date().getMonth() + 1; // 1-12
         let currentYear = new Date().getFullYear();
         let allCurrentScheduleItems = []; // Armazena todos os itens da escala atual para arquivamento
+        let archivedPrintItems = [];
+        let printSource = 'current';
+        const PRINT_SETTINGS_KEY = 'escala-print-settings';
+        const DEFAULT_PRINT_TITLE = 'ESCALA DE CULTOS ADCA - CAPOEIRA GRANDE';
         
         // --- LISTA DE NOMES PREDEFINIDOS ---
         const PREDEFINED_NAMES = [
@@ -1030,6 +1357,7 @@
                     
                     document.getElementById('archived-scale-title').textContent = `${title} (Arquivado em ${new Date(data.archivedAt).toLocaleDateString()})`;
                     
+                    archivedPrintItems = schedule;
                     // Renderiza a escala arquivada (não-editável)
                     renderTable(schedule, false, 'archived-schedule-body', true);
 
@@ -1419,6 +1747,263 @@
             hideConfirmModal();
         });
 
+
+        function getPrintCultoClass(culto) {
+            const upper = (culto || '').toUpperCase();
+            if (upper.includes('CEIA')) return 'print-culto-ceia';
+            if (upper.includes('LIBERTA')) return 'print-culto-libertacao';
+            if (upper.includes('DOUTRINA')) return 'print-culto-doutrina';
+            if (upper.includes('LOUVOR')) return 'print-culto-louvor';
+            if (upper.includes('MISS')) return 'print-culto-missoes';
+            return 'print-culto-default';
+        }
+
+        function splitPortariaNames(value) {
+            const raw = (value || '').trim();
+            if (!raw || raw === 'À DEFINIR') {
+                return ['', ''];
+            }
+            const parts = raw.split(/\s*(?:\/|,| e )\s*/i).filter(Boolean);
+            return [parts[0] || '', parts[1] || ''];
+        }
+
+        function loadPrintSettings() {
+            try {
+                const saved = JSON.parse(localStorage.getItem(PRINT_SETTINGS_KEY) || 'null');
+                if (saved && typeof saved === 'object') return saved;
+            } catch (error) {
+                console.warn('Não foi possível ler as preferências de impressão.', error);
+            }
+            return {};
+        }
+
+        function persistPrintSettings(settings) {
+            localStorage.setItem(PRINT_SETTINGS_KEY, JSON.stringify(settings));
+        }
+
+        function getPrintControlValues() {
+            return {
+                title: document.getElementById('print-title-input').value.trim() || DEFAULT_PRINT_TITLE,
+                paper: document.getElementById('print-paper').value,
+                scaleMode: document.getElementById('print-scale-mode').value,
+                scale: Number(document.getElementById('print-scale-input').value) || 87,
+                fontSize: Number(document.getElementById('print-font-range').value) || 11,
+                margin: Number(document.getElementById('print-margin').value) || 8,
+                colors: document.getElementById('print-colors').checked
+            };
+        }
+
+        function paperDimensions(paper) {
+            if (paper === 'letter') return { widthMm: 216, heightMm: 279 };
+            if (paper === 'legal') return { widthMm: 216, heightMm: 356 };
+            return { widthMm: 210, heightMm: 297 };
+        }
+
+        function getPrintWeekName(index, monthName) {
+            const weekNames = ["PRIMEIRA", "SEGUNDA", "TERCEIRA", "QUARTA", "QUINTA", "SEXTA"];
+            const weekNumber = Math.floor(index / 3) + 1;
+            const weekLabel = weekNames[weekNumber - 1] || `${weekNumber}ª`;
+            return `${weekLabel} SEMANA DE ${monthName}`;
+        }
+
+        function buildPrintDocument(items, month, year, settings) {
+            const monthName = MONTH_NAMES[month - 1].toUpperCase();
+            const logoSvg = `
+                <svg class="print-logo" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <circle cx="32" cy="32" r="30" fill="#ffffff" stroke="#f59e0b" stroke-width="4"/>
+                    <text x="32" y="27" text-anchor="middle" font-size="11" font-family="Inter, sans-serif" font-weight="800" fill="#1e4d9c">ADCA</text>
+                    <path d="M32 34 V50 M24 40 H40" stroke="#1e4d9c" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+            `;
+
+            const bodyRows = items.map((item, index) => {
+                let weekRow = '';
+                if (index % 3 === 0) {
+                    weekRow = `
+                        <tr class="print-week-row">
+                            <td colspan="7">${getPrintWeekName(index, monthName)}</td>
+                        </tr>
+                    `;
+                }
+                const [portariaA, portariaB] = splitPortariaNames(item.portaria2 ? `${item.portaria} / ${item.portaria2}` : item.portaria);
+                const cultoClass = settings.colors ? getPrintCultoClass(item.culto) : 'print-culto-default';
+                return `
+                    ${weekRow}
+                    <tr>
+                        <td>${item.date || ''}</td>
+                        <td>${item.day || ''}</td>
+                        <td class="${cultoClass} culto-cell">${item.culto || ''}</td>
+                        <td class="print-name">${portariaA}</td>
+                        <td class="print-name">${portariaB}</td>
+                        <td class="print-name">${item.direcao || ''}</td>
+                        <td class="print-name">${item.preletor || ''}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            return `
+                <header class="print-banner">
+                    ${logoSvg}
+                    <h1>${settings.title}</h1>
+                </header>
+                <div class="print-month">${monthName} DE ${year}</div>
+                <table class="print-table">
+                    <thead>
+                        <tr>
+                            <th style="width:11%">Data</th>
+                            <th style="width:16%">Dia</th>
+                            <th style="width:22%">Culto</th>
+                            <th colspan="2">Portaria</th>
+                            <th style="width:16%">Direção</th>
+                            <th style="width:16%">Preleitor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${bodyRows || '<tr><td colspan="7">Nenhum item para imprimir neste mês.</td></tr>'}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function getItemsForPrint() {
+            if (printSource === 'archived' && archivedPrintItems.length) {
+                return {
+                    items: archivedPrintItems,
+                    month: archivedPrintItems[0] ? parseInt(archivedPrintItems[0].date.split('/')[1], 10) : currentMonth,
+                    year: archivedPrintItems[0] ? parseInt(archivedPrintItems[0].date.split('/')[2], 10) : currentYear
+                };
+            }
+            const savedItems = allCurrentScheduleItems.filter(item => item.id !== 'null');
+            const items = savedItems.length ? savedItems : generatePlaceholderItems(currentMonth, currentYear);
+            return { items, month: currentMonth, year: currentYear };
+        }
+
+        function fitScaleToPage(settings) {
+            const paper = paperDimensions(settings.paper);
+            const usableHeightMm = paper.heightMm - (settings.margin * 2);
+            const sheet = document.getElementById('print-sheet');
+            if (!sheet || !sheet.scrollHeight) return settings.scale;
+            const mmPerPx = 25.4 / 96;
+            const contentHeightMm = sheet.scrollHeight * mmPerPx;
+            const fitted = Math.floor((usableHeightMm / contentHeightMm) * 100);
+            return Math.min(100, Math.max(50, fitted));
+        }
+
+        window.applyPrintSettings = function() {
+            const settings = getPrintControlValues();
+            document.getElementById('print-font-value').textContent = `${settings.fontSize}px`;
+
+            const { items, month, year } = getItemsForPrint();
+            const sheet = document.getElementById('print-sheet');
+            sheet.innerHTML = buildPrintDocument(items, month, year, settings);
+
+            const paper = paperDimensions(settings.paper);
+            const paperEl = document.getElementById('print-paper');
+            paperEl.style.width = `${paper.widthMm}mm`;
+            paperEl.style.minHeight = `${paper.heightMm}mm`;
+
+            sheet.style.fontSize = `${settings.fontSize}px`;
+            sheet.style.zoom = '1';
+
+            let scale = settings.scale;
+            if (settings.scaleMode === 'fit') {
+                scale = fitScaleToPage(settings);
+                document.getElementById('print-scale-input').value = scale;
+                document.getElementById('print-scale-range').value = scale;
+            } else if (settings.scaleMode !== 'custom') {
+                scale = Number(settings.scaleMode);
+                document.getElementById('print-scale-input').value = scale;
+                document.getElementById('print-scale-range').value = scale;
+            }
+
+            scale = Math.max(50, Math.min(130, scale));
+            const zoom = scale / 100;
+            sheet.style.zoom = String(zoom);
+            settings.scale = scale;
+            persistPrintSettings(settings);
+
+            const pageSize = settings.paper === 'letter' ? 'letter' : settings.paper === 'legal' ? 'legal' : 'A4';
+            document.getElementById('print-page-style').textContent = `
+                @page { size: ${pageSize} portrait; margin: ${settings.margin}mm; }
+                @media print {
+                    #print-sheet { zoom: ${zoom} !important; }
+                    .print-culto-doutrina, .print-culto-libertacao, .print-culto-louvor,
+                    .print-culto-ceia, .print-culto-missoes, .print-week-row td, .print-banner,
+                    .print-table thead th {
+                        ${settings.colors ? '' : 'background: #fff !important; color: #111 !important;'}
+                    }
+                }
+            `;
+
+            const pagePx = (paper.heightMm * 96) / 25.4;
+            const contentHeight = sheet.getBoundingClientRect().height;
+            const breakEl = document.getElementById('print-page-break');
+            breakEl.style.top = `${paper.heightMm}mm`;
+            const overflows = contentHeight > pagePx - 2;
+            breakEl.style.display = overflows ? 'block' : 'none';
+            const status = document.getElementById('print-fit-status');
+            status.textContent = overflows
+                ? `Escala ${scale}% — passa de 1 página`
+                : `Escala ${scale}% — cabe em 1 página`;
+            status.style.color = overflows ? '#b91c1c' : '#047857';
+        };
+
+        window.onPrintScaleModeChange = function() {
+            const mode = document.getElementById('print-scale-mode').value;
+            if (mode !== 'fit' && mode !== 'custom') {
+                document.getElementById('print-scale-input').value = mode;
+                document.getElementById('print-scale-range').value = mode;
+            }
+            applyPrintSettings();
+        };
+
+        window.onPrintCustomScale = function(value) {
+            document.getElementById('print-scale-mode').value = 'custom';
+            document.getElementById('print-scale-input').value = value;
+            document.getElementById('print-scale-range').value = value;
+            applyPrintSettings();
+        };
+
+        window.openPrintPreview = function(source = 'current') {
+            printSource = source;
+            const saved = loadPrintSettings();
+            document.getElementById('print-title-input').value = saved.title || DEFAULT_PRINT_TITLE;
+            document.getElementById('print-paper').value = saved.paper || 'A4';
+            document.getElementById('print-scale-mode').value = saved.scaleMode || 'custom';
+            document.getElementById('print-scale-input').value = saved.scale || 87;
+            document.getElementById('print-scale-range').value = saved.scale || 87;
+            document.getElementById('print-font-range').value = saved.fontSize || 11;
+            document.getElementById('print-margin').value = saved.margin || 8;
+            document.getElementById('print-colors').checked = saved.colors !== false;
+
+            const { items, month, year } = getItemsForPrint();
+            document.getElementById('print-sheet').innerHTML = buildPrintDocument(items, month, year, {
+                title: document.getElementById('print-title-input').value,
+                colors: document.getElementById('print-colors').checked
+            });
+
+            document.getElementById('print-overlay').classList.add('open');
+            document.body.classList.add('print-mode');
+            document.body.style.overflow = 'hidden';
+            requestAnimationFrame(() => applyPrintSettings());
+        };
+
+        window.closePrintPreview = function() {
+            document.getElementById('print-overlay').classList.remove('open');
+            document.body.classList.remove('print-mode');
+            document.body.style.overflow = '';
+        };
+
+        window.printCurrentSheet = function() {
+            applyPrintSettings();
+            window.print();
+        };
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && document.getElementById('print-overlay').classList.contains('open')) {
+                closePrintPreview();
+            }
+        });
 
         // Inicia a aplicação no carregamento da janela
         window.onload = setupFirebase;
