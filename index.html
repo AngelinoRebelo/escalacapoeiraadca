@@ -244,10 +244,20 @@
         }
         .print-toolbar-actions {
             display: flex;
+            flex-direction: column;
             gap: 8px;
         }
-        .print-toolbar-actions button {
+        .print-toolbar-actions-row {
+            display: flex;
+            gap: 8px;
+        }
+        .print-toolbar-actions-row button {
             flex: 1;
+        }
+        #print-pdf-status {
+            font-size: 12px;
+            font-weight: 600;
+            min-height: 1em;
         }
         .print-control {
             display: flex;
@@ -458,7 +468,8 @@
                 min-height: 0 !important;
             }
             #print-page-break,
-            #print-fit-status {
+            #print-fit-status,
+            #print-pdf-status {
                 display: none !important;
             }
             #print-sheet,
@@ -747,6 +758,13 @@
         <div id="print-toolbar">
             <h2 class="text-lg font-bold text-gray-900">Imprimir escala</h2>
             <div class="print-control">
+                <label for="print-destination">Destino</label>
+                <select id="print-destination" onchange="onPrintDestinationChange()">
+                    <option value="printer">Impressora</option>
+                    <option value="pdf">Salvar como PDF</option>
+                </select>
+            </div>
+            <div class="print-control">
                 <label for="print-title-input">Título</label>
                 <textarea id="print-title-input" maxlength="80" rows="2" oninput="applyPrintSettings()"></textarea>
             </div>
@@ -797,17 +815,20 @@
                 <input type="checkbox" id="print-colors" checked onchange="applyPrintSettings()">
                 Cores de fundo
             </label>
-            <p class="print-hint">Ajuste a escala personalizada para caber em uma folha. Na impressão do navegador, deixe a escala em 100%.</p>
+            <p id="print-hint" class="print-hint">Ajuste a escala personalizada para caber em uma folha. Na impressão do navegador, deixe a escala em 100%.</p>
             <span id="print-fit-status" class="text-sm font-semibold"></span>
+            <span id="print-pdf-status"></span>
             <div class="print-toolbar-actions">
-                <button type="button" onclick="closePrintPreview()"
-                        class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">
-                    Voltar
-                </button>
-                <button type="button" onclick="printCurrentSheet()"
-                        class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-5 rounded-lg">
-                    Imprimir
-                </button>
+                <div class="print-toolbar-actions-row">
+                    <button type="button" onclick="closePrintPreview()"
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">
+                        Voltar
+                    </button>
+                    <button type="button" id="print-action-btn" onclick="printOrSave()"
+                            class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-5 rounded-lg">
+                        Imprimir
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1821,6 +1842,7 @@
         function getPrintControlValues() {
             return {
                 title: document.getElementById('print-title-input').value.trim() || DEFAULT_PRINT_TITLE,
+                destination: document.getElementById('print-destination').value,
                 paper: document.getElementById('print-paper').value,
                 scaleMode: document.getElementById('print-scale-mode').value,
                 scale: Number(document.getElementById('print-scale-input').value) || 87,
@@ -2005,6 +2027,7 @@
             printSource = source;
             const saved = loadPrintSettings();
             document.getElementById('print-title-input').value = saved.title || DEFAULT_PRINT_TITLE;
+            document.getElementById('print-destination').value = saved.destination || 'printer';
             document.getElementById('print-paper').value = saved.paper || 'A4';
             document.getElementById('print-scale-mode').value = saved.scaleMode || 'custom';
             document.getElementById('print-scale-input').value = saved.scale || 87;
@@ -2022,6 +2045,7 @@
             document.getElementById('print-overlay').classList.add('open');
             document.body.classList.add('print-mode');
             document.body.style.overflow = 'hidden';
+            onPrintDestinationChange();
             requestAnimationFrame(() => applyPrintSettings());
         };
 
@@ -2034,6 +2058,150 @@
         window.printCurrentSheet = function() {
             applyPrintSettings();
             window.print();
+        };
+
+        window.onPrintDestinationChange = function() {
+            const dest = document.getElementById('print-destination').value;
+            const actionBtn = document.getElementById('print-action-btn');
+            const hint = document.getElementById('print-hint');
+            if (dest === 'pdf') {
+                actionBtn.textContent = 'Salvar PDF';
+                hint.textContent = 'Em Salvar como PDF, a escala personalizada fica neste painel (o Chrome não mostra essa opção). Ajuste aqui e clique em Salvar PDF.';
+            } else {
+                actionBtn.textContent = 'Imprimir';
+                hint.textContent = 'Ajuste a escala personalizada para caber em uma folha. Na impressão do navegador, deixe a escala em 100%.';
+            }
+            const settings = loadPrintSettings();
+            settings.destination = dest;
+            persistPrintSettings({ ...settings, ...getPrintControlValues(), destination: dest });
+        };
+
+        window.printOrSave = function() {
+            if (document.getElementById('print-destination').value === 'pdf') {
+                savePrintAsPdf();
+            } else {
+                printCurrentSheet();
+            }
+        };
+
+        function loadExternalScript(src) {
+            return new Promise((resolve, reject) => {
+                const existing = document.querySelector(`script[src="${src}"]`);
+                if (existing) {
+                    if (existing.dataset.loaded === '1' || existing.readyState === 'complete') {
+                        resolve();
+                        return;
+                    }
+                    existing.addEventListener('load', () => resolve());
+                    existing.addEventListener('error', () => reject(new Error(`Falha ao carregar ${src}`)));
+                    return;
+                }
+                const script = document.createElement('script');
+                script.src = src;
+                script.async = true;
+                script.onload = () => {
+                    script.dataset.loaded = '1';
+                    resolve();
+                };
+                script.onerror = () => reject(new Error(`Falha ao carregar ${src}`));
+                document.head.appendChild(script);
+            });
+        }
+
+        async function ensurePdfLibraries() {
+            if (!window.html2canvas) {
+                await loadExternalScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+            }
+            if (!window.jspdf) {
+                await loadExternalScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+            }
+        }
+
+        window.savePrintAsPdf = async function() {
+            applyPrintSettings();
+            const actionBtn = document.getElementById('print-action-btn');
+            const status = document.getElementById('print-pdf-status');
+            const settings = getPrintControlValues();
+            const sheet = document.getElementById('print-sheet');
+            const breakEl = document.getElementById('print-page-break');
+            const previousZoom = sheet.style.zoom;
+            const previousBreak = breakEl.style.display;
+
+            actionBtn.disabled = true;
+            status.style.color = '#1d4ed8';
+            status.textContent = 'Gerando PDF com a escala personalizada...';
+
+            try {
+                await ensurePdfLibraries();
+                breakEl.style.display = 'none';
+                sheet.style.zoom = '1';
+
+                const canvas = await window.html2canvas(sheet, {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: '#ffffff',
+                    logging: false
+                });
+
+                const format = settings.paper === 'letter' ? 'letter' : settings.paper === 'legal' ? 'legal' : 'a4';
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format, compress: true });
+                const paper = paperDimensions(settings.paper);
+                const margin = settings.margin;
+                const usableW = paper.widthMm - (margin * 2);
+                const usableH = paper.heightMm - (margin * 2);
+                const scale = Math.max(50, Math.min(130, settings.scale)) / 100;
+                const imgW = usableW * scale;
+                const imgH = (canvas.height / canvas.width) * imgW;
+                const pxPerMm = canvas.width / imgW;
+                const pageHeightPx = usableH * pxPerMm;
+
+                let offsetY = 0;
+                let pageIndex = 0;
+                while (offsetY < canvas.height - 1) {
+                    if (pageIndex > 0) {
+                        pdf.addPage();
+                    }
+                    const sliceHeight = Math.min(pageHeightPx, canvas.height - offsetY);
+                    const pageCanvas = document.createElement('canvas');
+                    pageCanvas.width = canvas.width;
+                    pageCanvas.height = Math.max(1, Math.ceil(sliceHeight));
+                    const ctx = pageCanvas.getContext('2d');
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+                    ctx.drawImage(
+                        canvas,
+                        0, offsetY, canvas.width, sliceHeight,
+                        0, 0, canvas.width, sliceHeight
+                    );
+                    const sliceHmm = (pageCanvas.height / canvas.width) * imgW;
+                    const left = margin + Math.max(0, (usableW - imgW) / 2);
+                    pdf.addImage(
+                        pageCanvas.toDataURL('image/jpeg', 0.92),
+                        'JPEG',
+                        left,
+                        margin,
+                        imgW,
+                        sliceHmm
+                    );
+                    offsetY += sliceHeight;
+                    pageIndex += 1;
+                }
+
+                const { month, year } = getItemsForPrint();
+                const monthSlug = MONTH_NAMES[month - 1].toLowerCase().replace(/\s+/g, '-');
+                pdf.save(`escala-cultos-adca-${monthSlug}-${year}.pdf`);
+                status.style.color = '#047857';
+                status.textContent = `PDF salvo na escala ${settings.scale}%.`;
+            } catch (error) {
+                console.error('Erro ao gerar PDF:', error);
+                status.style.color = '#b91c1c';
+                status.textContent = 'Não foi possível gerar o PDF. Tente de novo.';
+            } finally {
+                sheet.style.zoom = previousZoom;
+                breakEl.style.display = previousBreak;
+                actionBtn.disabled = false;
+            }
         };
 
         document.addEventListener('keydown', (event) => {
